@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import SelectCompany from "./pages/SelectCompany";
 import Dashboard from "./pages/Dashboard";
 import ChartOfAccounts from "./pages/ChartOfAccounts";
+import CashBank from "./pages/CashBank";
 import Products from "./pages/Products";
 import Customers from "./pages/sales/Customers";
 import SalesOrders from "./pages/sales/SalesOrders";
@@ -44,6 +45,7 @@ const App = () => (
               <Route element={<MainLayout />}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/accounts" element={<ChartOfAccounts />} />
+                <Route path="/cash-bank" element={<CashBank />} />
                 <Route path="/products" element={<Products />} />
                 <Route path="/sales/customers" element={<Customers />} />
                 <Route path="/sales/orders" element={<SalesOrders />} />
