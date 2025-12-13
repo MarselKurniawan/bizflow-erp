@@ -31,6 +31,7 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
   { icon: BookOpen, label: 'Chart of Accounts', path: '/accounts' },
+  { icon: CreditCard, label: 'Cash & Bank', path: '/cash-bank' },
   { icon: Package, label: 'Products', path: '/products' },
   { 
     icon: ShoppingCart, 

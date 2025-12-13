@@ -1,16 +1,17 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   TrendingUp, 
   TrendingDown, 
   DollarSign, 
-  ShoppingCart, 
-  Package, 
-  Users,
+  CreditCard,
   ArrowUpRight,
   ArrowDownRight,
   FileText,
-  CreditCard
+  Users,
+  Wallet,
+  Building2
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -21,47 +22,37 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   Cell
 } from 'recharts';
+import { formatCurrency, formatDate } from '@/lib/formatters';
 
-// Sample data
-const revenueData = [
-  { month: 'Jan', revenue: 45000000, expense: 32000000 },
-  { month: 'Feb', revenue: 52000000, expense: 35000000 },
-  { month: 'Mar', revenue: 48000000, expense: 33000000 },
-  { month: 'Apr', revenue: 61000000, expense: 40000000 },
-  { month: 'May', revenue: 55000000, expense: 38000000 },
-  { month: 'Jun', revenue: 67000000, expense: 45000000 },
-];
+interface DashboardStats {
+  totalRevenue: number;
+  totalExpenses: number;
+  outstandingReceivables: number;
+  outstandingPayables: number;
+  cashBalance: number;
+  totalCustomers: number;
+  totalSuppliers: number;
+  invoiceCount: number;
+  billCount: number;
+}
 
-const expenseByCategory = [
-  { name: 'COGS', value: 45, color: 'hsl(199, 89%, 48%)' },
-  { name: 'Salary', value: 25, color: 'hsl(172, 66%, 50%)' },
-  { name: 'Operations', value: 15, color: 'hsl(142, 71%, 45%)' },
-  { name: 'Marketing', value: 10, color: 'hsl(38, 92%, 50%)' },
-  { name: 'Others', value: 5, color: 'hsl(215, 16%, 47%)' },
-];
+interface MonthlyData {
+  month: string;
+  revenue: number;
+  expense: number;
+}
 
-const recentTransactions = [
-  { id: 1, type: 'income', description: 'Invoice #INV-2024-001', amount: 15000000, date: '2024-01-15' },
-  { id: 2, type: 'expense', description: 'Purchase Order #PO-2024-012', amount: 8500000, date: '2024-01-14' },
-  { id: 3, type: 'income', description: 'Invoice #INV-2024-002', amount: 22000000, date: '2024-01-13' },
-  { id: 4, type: 'expense', description: 'Utility Payment', amount: 3200000, date: '2024-01-12' },
-  { id: 5, type: 'income', description: 'Invoice #INV-2024-003', amount: 9800000, date: '2024-01-11' },
-];
-
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
-};
+interface Transaction {
+  id: string;
+  type: 'income' | 'expense';
+  description: string;
+  amount: number;
+  date: string;
+}
 
 const formatCompactCurrency = (value: number) => {
   if (value >= 1000000000) {
@@ -76,39 +67,208 @@ const formatCompactCurrency = (value: number) => {
 interface StatCardProps {
   title: string;
   value: string;
-  change: number;
-  changeLabel: string;
+  subtitle?: string;
   icon: React.ElementType;
   iconBg: string;
+  valueColor?: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, change, changeLabel, icon: Icon, iconBg }) => {
-  const isPositive = change >= 0;
-  
+const StatCard: React.FC<StatCardProps> = ({ title, value, subtitle, icon: Icon, iconBg, valueColor }) => {
   return (
     <div className="stat-card animate-fade-in">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-muted-foreground mb-1">{title}</p>
-          <p className="text-2xl font-heading font-bold text-foreground">{value}</p>
+          <p className={`text-2xl font-heading font-bold ${valueColor || 'text-foreground'}`}>{value}</p>
         </div>
         <div className={`w-12 h-12 rounded-xl ${iconBg} flex items-center justify-center`}>
           <Icon className="w-6 h-6 text-primary-foreground" />
         </div>
       </div>
-      <div className="mt-4 flex items-center gap-2">
-        <span className={`flex items-center text-sm font-medium ${isPositive ? 'text-success' : 'text-destructive'}`}>
-          {isPositive ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-          {Math.abs(change)}%
-        </span>
-        <span className="text-sm text-muted-foreground">{changeLabel}</span>
-      </div>
+      {subtitle && (
+        <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
+      )}
     </div>
   );
 };
 
 export const Dashboard: React.FC = () => {
   const { selectedCompany } = useCompany();
+  const [stats, setStats] = useState<DashboardStats>({
+    totalRevenue: 0,
+    totalExpenses: 0,
+    outstandingReceivables: 0,
+    outstandingPayables: 0,
+    cashBalance: 0,
+    totalCustomers: 0,
+    totalSuppliers: 0,
+    invoiceCount: 0,
+    billCount: 0,
+  });
+  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!selectedCompany) return;
+
+    const fetchDashboardData = async () => {
+      setIsLoading(true);
+
+      // Fetch invoices for receivables
+      const { data: invoices } = await supabase
+        .from('invoices')
+        .select('outstanding_amount, total_amount')
+        .eq('company_id', selectedCompany.id)
+        .neq('status', 'cancelled');
+
+      // Fetch bills for payables
+      const { data: bills } = await supabase
+        .from('bills')
+        .select('outstanding_amount, total_amount')
+        .eq('company_id', selectedCompany.id)
+        .neq('status', 'cancelled');
+
+      // Fetch customers count
+      const { count: customerCount } = await supabase
+        .from('customers')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', selectedCompany.id);
+
+      // Fetch suppliers count
+      const { count: supplierCount } = await supabase
+        .from('suppliers')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', selectedCompany.id);
+
+      // Calculate cash balance from journal entries
+      const { data: cashEntries } = await supabase
+        .from('journal_entry_lines')
+        .select(`
+          debit_amount,
+          credit_amount,
+          account:chart_of_accounts!journal_entry_lines_account_id_fkey(
+            account_type
+          ),
+          journal_entry:journal_entries!journal_entry_lines_journal_entry_id_fkey(
+            is_posted, company_id
+          )
+        `)
+        .eq('journal_entry.company_id', selectedCompany.id)
+        .eq('journal_entry.is_posted', true)
+        .eq('account.account_type', 'cash_bank');
+
+      let cashBalance = 0;
+      (cashEntries || []).forEach((entry: any) => {
+        cashBalance += (entry.debit_amount || 0) - (entry.credit_amount || 0);
+      });
+
+      // Calculate revenue and expenses from journal entries (current year)
+      const startOfYear = new Date();
+      startOfYear.setMonth(0, 1);
+      const { data: plEntries } = await supabase
+        .from('journal_entry_lines')
+        .select(`
+          debit_amount,
+          credit_amount,
+          account:chart_of_accounts!journal_entry_lines_account_id_fkey(
+            account_type
+          ),
+          journal_entry:journal_entries!journal_entry_lines_journal_entry_id_fkey(
+            entry_date, is_posted, company_id
+          )
+        `)
+        .eq('journal_entry.company_id', selectedCompany.id)
+        .eq('journal_entry.is_posted', true)
+        .gte('journal_entry.entry_date', startOfYear.toISOString().split('T')[0]);
+
+      let totalRevenue = 0;
+      let totalExpenses = 0;
+      (plEntries || []).forEach((entry: any) => {
+        if (entry.account?.account_type === 'revenue') {
+          totalRevenue += (entry.credit_amount || 0) - (entry.debit_amount || 0);
+        } else if (entry.account?.account_type === 'expense') {
+          totalExpenses += (entry.debit_amount || 0) - (entry.credit_amount || 0);
+        }
+      });
+
+      // Get monthly data for chart
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const currentMonth = new Date().getMonth();
+      const monthlyStats: MonthlyData[] = [];
+      
+      for (let i = 5; i >= 0; i--) {
+        const monthIndex = (currentMonth - i + 12) % 12;
+        monthlyStats.push({
+          month: months[monthIndex],
+          revenue: 0,
+          expense: 0,
+        });
+      }
+
+      (plEntries || []).forEach((entry: any) => {
+        if (!entry.journal_entry?.entry_date) return;
+        const entryMonth = new Date(entry.journal_entry.entry_date).getMonth();
+        const monthData = monthlyStats.find((m, idx) => {
+          const targetMonth = (currentMonth - (5 - idx) + 12) % 12;
+          return targetMonth === entryMonth;
+        });
+        if (monthData) {
+          if (entry.account?.account_type === 'revenue') {
+            monthData.revenue += (entry.credit_amount || 0) - (entry.debit_amount || 0);
+          } else if (entry.account?.account_type === 'expense') {
+            monthData.expense += (entry.debit_amount || 0) - (entry.credit_amount || 0);
+          }
+        }
+      });
+
+      setMonthlyData(monthlyStats);
+
+      // Get recent transactions (payments)
+      const { data: payments } = await supabase
+        .from('payments')
+        .select('id, payment_number, payment_date, amount, payment_type, customers(name), suppliers(name)')
+        .eq('company_id', selectedCompany.id)
+        .order('payment_date', { ascending: false })
+        .limit(5);
+
+      const transactions: Transaction[] = (payments || []).map((p: any) => ({
+        id: p.id,
+        type: p.payment_type === 'incoming' ? 'income' : 'expense',
+        description: p.payment_type === 'incoming' 
+          ? `Payment from ${p.customers?.name || 'Customer'}`
+          : `Payment to ${p.suppliers?.name || 'Supplier'}`,
+        amount: p.amount,
+        date: p.payment_date,
+      }));
+
+      setRecentTransactions(transactions);
+
+      // Set stats
+      setStats({
+        totalRevenue,
+        totalExpenses,
+        outstandingReceivables: (invoices || []).reduce((sum, inv) => sum + (inv.outstanding_amount || 0), 0),
+        outstandingPayables: (bills || []).reduce((sum, bill) => sum + (bill.outstanding_amount || 0), 0),
+        cashBalance,
+        totalCustomers: customerCount || 0,
+        totalSuppliers: supplierCount || 0,
+        invoiceCount: (invoices || []).filter(i => i.outstanding_amount > 0).length,
+        billCount: (bills || []).filter(b => b.outstanding_amount > 0).length,
+      });
+
+      setIsLoading(false);
+    };
+
+    fetchDashboardData();
+  }, [selectedCompany]);
+
+  const netProfit = stats.totalRevenue - stats.totalExpenses;
+
+  const pieData = [
+    { name: 'Revenue', value: stats.totalRevenue, color: 'hsl(142, 71%, 45%)' },
+    { name: 'Expenses', value: stats.totalExpenses, color: 'hsl(38, 92%, 50%)' },
+  ];
 
   return (
     <div className="space-y-8">
@@ -120,39 +280,65 @@ export const Dashboard: React.FC = () => {
         </p>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Grid - Row 1 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
-          title="Total Revenue"
-          value={formatCompactCurrency(328000000)}
-          change={12.5}
-          changeLabel="vs last month"
-          icon={DollarSign}
+          title="Cash & Bank"
+          value={formatCompactCurrency(stats.cashBalance)}
+          subtitle="Current balance"
+          icon={Wallet}
           iconBg="gradient-primary"
+          valueColor={stats.cashBalance >= 0 ? 'text-success' : 'text-destructive'}
         />
         <StatCard
-          title="Total Expenses"
-          value={formatCompactCurrency(223000000)}
-          change={-3.2}
-          changeLabel="vs last month"
+          title="Accounts Receivable"
+          value={formatCompactCurrency(stats.outstandingReceivables)}
+          subtitle={`${stats.invoiceCount} unpaid invoices`}
+          icon={TrendingUp}
+          iconBg="bg-success"
+        />
+        <StatCard
+          title="Accounts Payable"
+          value={formatCompactCurrency(stats.outstandingPayables)}
+          subtitle={`${stats.billCount} unpaid bills`}
+          icon={TrendingDown}
+          iconBg="bg-warning"
+        />
+        <StatCard
+          title="Net Profit (YTD)"
+          value={formatCompactCurrency(netProfit)}
+          subtitle={`Revenue: ${formatCompactCurrency(stats.totalRevenue)}`}
+          icon={DollarSign}
+          iconBg={netProfit >= 0 ? 'bg-success' : 'bg-destructive'}
+          valueColor={netProfit >= 0 ? 'text-success' : 'text-destructive'}
+        />
+      </div>
+
+      {/* Stats Grid - Row 2 */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <StatCard
+          title="Total Revenue (YTD)"
+          value={formatCompactCurrency(stats.totalRevenue)}
+          icon={TrendingUp}
+          iconBg="bg-success"
+        />
+        <StatCard
+          title="Total Expenses (YTD)"
+          value={formatCompactCurrency(stats.totalExpenses)}
           icon={CreditCard}
           iconBg="bg-warning"
         />
         <StatCard
-          title="Outstanding Invoices"
-          value="24"
-          change={8}
-          changeLabel="new this week"
-          icon={FileText}
-          iconBg="bg-accent"
+          title="Customers"
+          value={stats.totalCustomers.toString()}
+          icon={Users}
+          iconBg="bg-primary"
         />
         <StatCard
-          title="Total Customers"
-          value="156"
-          change={5.2}
-          changeLabel="vs last month"
-          icon={Users}
-          iconBg="bg-success"
+          title="Suppliers"
+          value={stats.totalSuppliers.toString()}
+          icon={Building2}
+          iconBg="bg-accent"
         />
       </div>
 
@@ -161,72 +347,78 @@ export const Dashboard: React.FC = () => {
         {/* Revenue Chart */}
         <Card className="lg:col-span-2 animate-fade-in" style={{ animationDelay: '100ms' }}>
           <CardHeader>
-            <CardTitle className="text-lg font-heading">Revenue vs Expenses</CardTitle>
+            <CardTitle className="text-lg font-heading">Revenue vs Expenses (Last 6 Months)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={revenueData}>
-                  <defs>
-                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(199, 89%, 48%)" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="hsl(199, 89%, 48%)" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(38, 92%, 50%)" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="hsl(38, 92%, 50%)" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                  <YAxis 
-                    stroke="hsl(var(--muted-foreground))" 
-                    fontSize={12}
-                    tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`}
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }}
-                    formatter={(value: number) => [formatCurrency(value), '']}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="hsl(199, 89%, 48%)"
-                    strokeWidth={2}
-                    fillOpacity={1}
-                    fill="url(#colorRevenue)"
-                    name="Revenue"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="expense"
-                    stroke="hsl(38, 92%, 50%)"
-                    strokeWidth={2}
-                    fillOpacity={1}
-                    fill="url(#colorExpense)"
-                    name="Expense"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              {isLoading ? (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  Loading chart data...
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={monthlyData}>
+                    <defs>
+                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(38, 92%, 50%)" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="hsl(38, 92%, 50%)" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                    <YAxis 
+                      stroke="hsl(var(--muted-foreground))" 
+                      fontSize={12}
+                      tickFormatter={(value) => value >= 1000000 ? `${(value / 1000000).toFixed(0)}M` : value.toString()}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                      formatter={(value: number) => [formatCurrency(value), '']}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="hsl(142, 71%, 45%)"
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#colorRevenue)"
+                      name="Revenue"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="expense"
+                      stroke="hsl(38, 92%, 50%)"
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#colorExpense)"
+                      name="Expense"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Expense Breakdown */}
+        {/* Profit Summary */}
         <Card className="animate-fade-in" style={{ animationDelay: '150ms' }}>
           <CardHeader>
-            <CardTitle className="text-lg font-heading">Expense Breakdown</CardTitle>
+            <CardTitle className="text-lg font-heading">Profit Summary (YTD)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-48 mb-4">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={expenseByCategory}
+                    data={pieData}
                     cx="50%"
                     cy="50%"
                     innerRadius={50}
@@ -234,7 +426,7 @@ export const Dashboard: React.FC = () => {
                     paddingAngle={2}
                     dataKey="value"
                   >
-                    {expenseByCategory.map((entry, index) => (
+                    {pieData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -244,24 +436,32 @@ export const Dashboard: React.FC = () => {
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '8px'
                     }}
-                    formatter={(value: number) => [`${value}%`, '']}
+                    formatter={(value: number) => [formatCurrency(value), '']}
                   />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="space-y-2">
-              {expenseByCategory.map((item) => (
-                <div key={item.name} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <div 
-                      className="w-3 h-3 rounded-full" 
-                      style={{ backgroundColor: item.color }}
-                    />
-                    <span className="text-muted-foreground">{item.name}</span>
-                  </div>
-                  <span className="font-medium">{item.value}%</span>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-success" />
+                  <span className="text-sm text-muted-foreground">Revenue</span>
                 </div>
-              ))}
+                <span className="font-medium text-success">{formatCurrency(stats.totalRevenue)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-warning" />
+                  <span className="text-sm text-muted-foreground">Expenses</span>
+                </div>
+                <span className="font-medium text-warning">{formatCurrency(stats.totalExpenses)}</span>
+              </div>
+              <div className="flex items-center justify-between pt-3 border-t">
+                <span className="font-semibold">Net Profit</span>
+                <span className={`font-bold ${netProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
+                  {formatCurrency(netProfit)}
+                </span>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -270,44 +470,48 @@ export const Dashboard: React.FC = () => {
       {/* Recent Transactions */}
       <Card className="animate-fade-in" style={{ animationDelay: '200ms' }}>
         <CardHeader>
-          <CardTitle className="text-lg font-heading">Recent Transactions</CardTitle>
+          <CardTitle className="text-lg font-heading">Recent Payments</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Description</th>
-                  <th>Date</th>
-                  <th>Type</th>
-                  <th className="text-right">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentTransactions.map((transaction) => (
-                  <tr key={transaction.id}>
-                    <td className="font-medium">{transaction.description}</td>
-                    <td className="text-muted-foreground">{transaction.date}</td>
-                    <td>
-                      <span className={`badge-status ${
-                        transaction.type === 'income' 
-                          ? 'bg-success/10 text-success' 
-                          : 'bg-destructive/10 text-destructive'
-                      }`}>
-                        {transaction.type === 'income' ? 'Income' : 'Expense'}
-                      </span>
-                    </td>
-                    <td className={`text-right font-medium ${
-                      transaction.type === 'income' ? 'text-success' : 'text-destructive'
-                    }`}>
-                      {transaction.type === 'income' ? '+' : '-'}
-                      {formatCurrency(transaction.amount)}
-                    </td>
+          {recentTransactions.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">No recent payments</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Description</th>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th className="text-right">Amount</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {recentTransactions.map((transaction) => (
+                    <tr key={transaction.id}>
+                      <td className="font-medium">{transaction.description}</td>
+                      <td className="text-muted-foreground">{formatDate(transaction.date)}</td>
+                      <td>
+                        <span className={`badge-status ${
+                          transaction.type === 'income' 
+                            ? 'bg-success/10 text-success' 
+                            : 'bg-destructive/10 text-destructive'
+                        }`}>
+                          {transaction.type === 'income' ? 'Received' : 'Paid'}
+                        </span>
+                      </td>
+                      <td className={`text-right font-medium ${
+                        transaction.type === 'income' ? 'text-success' : 'text-destructive'
+                      }`}>
+                        {transaction.type === 'income' ? '+' : '-'}
+                        {formatCurrency(transaction.amount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
