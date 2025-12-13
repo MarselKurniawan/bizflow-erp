@@ -309,14 +309,14 @@ export const Products: React.FC = () => {
                 <div>
                   <label className="form-label">Category</label>
                   <Select
-                    value={formData.category_id}
-                    onValueChange={(value) => setFormData({ ...formData, category_id: value })}
+                    value={formData.category_id || "none"}
+                    onValueChange={(value) => setFormData({ ...formData, category_id: value === "none" ? "" : value })}
                   >
                     <SelectTrigger className="input-field">
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No Category</SelectItem>
+                      <SelectItem value="none">No Category</SelectItem>
                       {categories.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                       ))}
@@ -380,14 +380,14 @@ export const Products: React.FC = () => {
                   <div>
                     <label className="form-label">Revenue Account</label>
                     <Select
-                      value={formData.revenue_account_id}
-                      onValueChange={(value) => setFormData({ ...formData, revenue_account_id: value })}
+                      value={formData.revenue_account_id || "none"}
+                      onValueChange={(value) => setFormData({ ...formData, revenue_account_id: value === "none" ? "" : value })}
                     >
                       <SelectTrigger className="input-field">
                         <SelectValue placeholder="Select revenue account" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No Account</SelectItem>
+                        <SelectItem value="none">No Account</SelectItem>
                         {revenueAccounts.map((acc) => (
                           <SelectItem key={acc.id} value={acc.id}>
                             {acc.code} - {acc.name}
@@ -400,14 +400,14 @@ export const Products: React.FC = () => {
                   <div>
                     <label className="form-label">COGS / Expense Account</label>
                     <Select
-                      value={formData.cogs_account_id}
-                      onValueChange={(value) => setFormData({ ...formData, cogs_account_id: value })}
+                      value={formData.cogs_account_id || "none"}
+                      onValueChange={(value) => setFormData({ ...formData, cogs_account_id: value === "none" ? "" : value })}
                     >
                       <SelectTrigger className="input-field">
                         <SelectValue placeholder="Select COGS account" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No Account</SelectItem>
+                        <SelectItem value="none">No Account</SelectItem>
                         {cogsAccounts.map((acc) => (
                           <SelectItem key={acc.id} value={acc.id}>
                             {acc.code} - {acc.name}
