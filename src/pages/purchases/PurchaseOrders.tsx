@@ -328,7 +328,7 @@ export const PurchaseOrders: React.FC = () => {
         .select('id')
         .eq('company_id', selectedCompany.id)
         .eq('account_type', 'asset')
-        .ilike('name', '%inventory%')
+        .or('name.ilike.%inventory%,name.ilike.%persediaan%')
         .limit(1)
         .single();
 
@@ -337,7 +337,7 @@ export const PurchaseOrders: React.FC = () => {
         .select('id')
         .eq('company_id', selectedCompany.id)
         .eq('account_type', 'liability')
-        .ilike('name', '%payable%')
+        .or('name.ilike.%payable%,name.ilike.%hutang%')
         .limit(1)
         .single();
 
