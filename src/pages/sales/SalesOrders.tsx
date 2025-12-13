@@ -351,7 +351,7 @@ export const SalesOrders: React.FC = () => {
         .select('id')
         .eq('company_id', selectedCompany.id)
         .eq('account_type', 'asset')
-        .ilike('name', '%receivable%')
+        .or('name.ilike.%receivable%,name.ilike.%piutang%')
         .limit(1)
         .single();
 

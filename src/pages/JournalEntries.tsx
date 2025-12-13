@@ -49,8 +49,30 @@ export const JournalEntries: React.FC = () => {
 
   const handleView = async (entry: JournalEntry) => {
     setViewingEntry(entry);
-    const { data } = await supabase.from('journal_entry_lines').select('*, chart_of_accounts(code, name)').eq('journal_entry_id', entry.id);
-    setViewingLines((data || []).map((line: any) => ({ ...line, account_code: line.chart_of_accounts?.code, account_name: line.chart_of_accounts?.name })));
+    const { data, error } = await supabase
+      .from('journal_entry_lines')
+      .select(`
+        id,
+        account_id,
+        debit_amount,
+        credit_amount,
+        description,
+        account:chart_of_accounts!journal_entry_lines_account_id_fkey(code, name)
+      `)
+      .eq('journal_entry_id', entry.id);
+
+    if (error) {
+      console.error('Error fetching journal lines:', error);
+      setViewingLines([]);
+    } else {
+      setViewingLines(
+        (data || []).map((line: any) => ({
+          ...line,
+          account_code: line.account?.code,
+          account_name: line.account?.name,
+        }))
+      );
+    }
     setIsViewDialogOpen(true);
   };
 

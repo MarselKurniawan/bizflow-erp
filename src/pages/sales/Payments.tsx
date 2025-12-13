@@ -254,29 +254,24 @@ export const SalesPayments: React.FC = () => {
       .single();
 
     if (!journalError && journalEntry) {
-      // Get cash and receivable accounts
-      const { data: cashAccount } = await supabase
-        .from('chart_of_accounts')
-        .select('id')
-        .eq('company_id', selectedCompany.id)
-        .eq('account_type', 'cash_bank')
-        .limit(1)
-        .single();
+      // Use selected cash account if provided, otherwise first cash/bank account
+      const cashAccounts = getCashBankAccounts();
+      const cashAccountId = formData.cash_account_id || cashAccounts[0]?.id;
 
       const { data: receivableAccount } = await supabase
         .from('chart_of_accounts')
         .select('id')
         .eq('company_id', selectedCompany.id)
         .eq('account_type', 'asset')
-        .ilike('name', '%receivable%')
+        .or('name.ilike.%receivable%,name.ilike.%piutang%')
         .limit(1)
         .single();
 
-      if (cashAccount && receivableAccount) {
+      if (cashAccountId && receivableAccount) {
         await supabase.from('journal_entry_lines').insert([
           {
             journal_entry_id: journalEntry.id,
-            account_id: cashAccount.id,
+            account_id: cashAccountId,
             debit_amount: totalPaymentAmount,
             credit_amount: 0,
             description: 'Cash Received',
