@@ -65,6 +65,14 @@ const menuItems: MenuItem[] = [
       { label: 'Aged Payables', path: '/reports/aged-payables' },
     ]
   },
+  { 
+    icon: Settings, 
+    label: 'Settings',
+    children: [
+      { label: 'Users', path: '/settings/users' },
+      { label: 'Companies', path: '/settings/companies' },
+    ]
+  },
 ];
 
 export const Sidebar: React.FC = () => {

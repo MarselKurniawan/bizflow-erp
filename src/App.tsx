@@ -26,6 +26,8 @@ import BalanceSheet from "./pages/reports/BalanceSheet";
 import GeneralLedger from "./pages/reports/GeneralLedger";
 import AgedReceivables from "./pages/reports/AgedReceivables";
 import AgedPayables from "./pages/reports/AgedPayables";
+import Users from "./pages/settings/Users";
+import Companies from "./pages/settings/Companies";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -61,6 +63,8 @@ const App = () => (
                 <Route path="/reports/general-ledger" element={<GeneralLedger />} />
                 <Route path="/reports/aged-receivables" element={<AgedReceivables />} />
                 <Route path="/reports/aged-payables" element={<AgedPayables />} />
+                <Route path="/settings/users" element={<Users />} />
+                <Route path="/settings/companies" element={<Companies />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
