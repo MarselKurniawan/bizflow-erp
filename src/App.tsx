@@ -20,6 +20,11 @@ import PurchaseOrders from "./pages/purchases/PurchaseOrders";
 import Bills from "./pages/purchases/Bills";
 import PurchasePayments from "./pages/purchases/Payments";
 import JournalEntries from "./pages/JournalEntries";
+import ProfitLoss from "./pages/reports/ProfitLoss";
+import BalanceSheet from "./pages/reports/BalanceSheet";
+import GeneralLedger from "./pages/reports/GeneralLedger";
+import AgedReceivables from "./pages/reports/AgedReceivables";
+import AgedPayables from "./pages/reports/AgedPayables";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,11 +54,11 @@ const App = () => (
                 <Route path="/purchases/bills" element={<Bills />} />
                 <Route path="/purchases/payments" element={<PurchasePayments />} />
                 <Route path="/journal" element={<JournalEntries />} />
-                <Route path="/reports/profit-loss" element={<Dashboard />} />
-                <Route path="/reports/balance-sheet" element={<Dashboard />} />
-                <Route path="/reports/general-ledger" element={<Dashboard />} />
-                <Route path="/reports/aged-receivables" element={<Dashboard />} />
-                <Route path="/reports/aged-payables" element={<Dashboard />} />
+                <Route path="/reports/profit-loss" element={<ProfitLoss />} />
+                <Route path="/reports/balance-sheet" element={<BalanceSheet />} />
+                <Route path="/reports/general-ledger" element={<GeneralLedger />} />
+                <Route path="/reports/aged-receivables" element={<AgedReceivables />} />
+                <Route path="/reports/aged-payables" element={<AgedPayables />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
