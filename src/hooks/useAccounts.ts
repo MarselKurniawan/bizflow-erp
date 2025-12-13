@@ -46,9 +46,24 @@ export const useAccounts = () => {
   const getAssetAccounts = () => getAccountsByType('asset');
   const getLiabilityAccounts = () => getAccountsByType('liability');
   const getCashBankAccounts = () => getAccountsByType('cash_bank');
-  const getReceivableAccounts = () => accounts.filter(a => a.account_type === 'asset' && a.name.toLowerCase().includes('receivable'));
-  const getPayableAccounts = () => accounts.filter(a => a.account_type === 'liability' && a.name.toLowerCase().includes('payable'));
-  const getCogsAccounts = () => accounts.filter(a => a.account_type === 'expense' && (a.name.toLowerCase().includes('cogs') || a.name.toLowerCase().includes('cost')));
+  const getReceivableAccounts = () =>
+    accounts.filter(
+      (a) =>
+        a.account_type === 'asset' &&
+        (a.name.toLowerCase().includes('receivable') || a.name.toLowerCase().includes('piutang'))
+    );
+  const getPayableAccounts = () =>
+    accounts.filter(
+      (a) =>
+        a.account_type === 'liability' &&
+        (a.name.toLowerCase().includes('payable') || a.name.toLowerCase().includes('hutang'))
+    );
+  const getCogsAccounts = () =>
+    accounts.filter(
+      (a) =>
+        a.account_type === 'expense' &&
+        (a.name.toLowerCase().includes('cogs') || a.name.toLowerCase().includes('cost'))
+    );
 
   return {
     accounts,
