@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, BookOpen } from 'lucide-react';
+import { Search, BookOpen, Download, FileSpreadsheet } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Button } from '@/components/ui/button';
@@ -12,9 +12,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import { exportToCSV, exportToExcel, exportToPDF, generatePDFTable } from '@/lib/exportUtils';
 
 interface Account {
   id: string;
@@ -148,6 +155,57 @@ export const GeneralLedger: React.FC = () => {
     ? ledgerEntries[ledgerEntries.length - 1].running_balance 
     : openingBalance;
 
+  const handleExportCSV = () => {
+    if (!selectedAccountData) return;
+    const data = ledgerEntries.map(e => ({
+      Date: e.entry_date,
+      'Entry #': e.entry_number,
+      Description: e.description,
+      Debit: e.debit_amount,
+      Credit: e.credit_amount,
+      Balance: e.running_balance,
+    }));
+    exportToCSV(data, `ledger-${selectedAccountData.code}-${startDate}-to-${endDate}`);
+    toast.success('Exported to CSV');
+  };
+
+  const handleExportExcel = () => {
+    if (!selectedAccountData) return;
+    const data = ledgerEntries.map(e => ({
+      Date: e.entry_date,
+      'Entry #': e.entry_number,
+      Description: e.description,
+      Debit: e.debit_amount,
+      Credit: e.credit_amount,
+      Balance: e.running_balance,
+    }));
+    exportToExcel(data, `ledger-${selectedAccountData.code}-${startDate}-to-${endDate}`, 'General Ledger');
+    toast.success('Exported to Excel');
+  };
+
+  const handleExportPDF = () => {
+    if (!selectedAccountData) return;
+    const rows = ledgerEntries.map(e => [
+      formatDate(e.entry_date),
+      e.entry_number,
+      e.description,
+      e.debit_amount > 0 ? formatCurrency(e.debit_amount) : '-',
+      e.credit_amount > 0 ? formatCurrency(e.credit_amount) : '-',
+      formatCurrency(e.running_balance),
+    ]);
+    
+    const html = `
+      <h2>Account: ${selectedAccountData.code} - ${selectedAccountData.name}</h2>
+      <h3>Period: ${startDate} to ${endDate}</h3>
+      <p>Opening Balance: ${formatCurrency(openingBalance)}</p>
+      ${generatePDFTable(['Date', 'Entry #', 'Description', 'Debit', 'Credit', 'Balance'], rows, { 
+        totalRow: ['', '', 'Totals', formatCurrency(totalDebits), formatCurrency(totalCredits), ''] 
+      })}
+      <p><strong>Closing Balance: ${formatCurrency(closingBalance)}</strong></p>
+    `;
+    exportToPDF(`General Ledger - ${selectedAccountData.name}`, html);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -155,6 +213,30 @@ export const GeneralLedger: React.FC = () => {
           <h1 className="text-3xl font-heading font-bold text-foreground">General Ledger</h1>
           <p className="text-muted-foreground mt-1">Detailed account transactions</p>
         </div>
+        {selectedAccountData && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Download className="w-4 h-4 mr-2" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportPDF}>
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                Export PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportExcel}>
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                Export Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportCSV}>
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                Export CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       <Card>

@@ -446,7 +446,7 @@ const Users: React.FC = () => {
                             <Badge key={c.id} variant="outline">{c.code}</Badge>
                           ))
                         ) : (
-                          <span className="text-muted-foreground text-sm">None</span>
+                          <Badge variant="destructive" className="text-xs">Not Assigned</Badge>
                         )}
                         {!user.roles.includes('admin') && user.companies.length > 2 && (
                           <Badge variant="outline">+{user.companies.length - 2}</Badge>
@@ -457,12 +457,12 @@ const Users: React.FC = () => {
                       <div className="flex justify-end gap-2">
                         {!user.roles.includes('admin') && (
                           <Button
-                            variant="outline"
+                            variant={user.companies.length === 0 ? "default" : "outline"}
                             size="sm"
                             onClick={() => openAssignDialog(user)}
                           >
                             <Building2 className="w-4 h-4 mr-1" />
-                            Assign
+                            {user.companies.length === 0 ? 'Assign Company' : 'Assign'}
                           </Button>
                         )}
                         <Button

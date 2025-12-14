@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Download } from 'lucide-react';
+import { TrendingUp, TrendingDown, Download, FileSpreadsheet } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import { exportToCSV, exportToExcel, exportToPDF, generatePDFTable } from '@/lib/exportUtils';
 
 interface AccountBalance {
   account_type: string;
@@ -106,6 +113,41 @@ export const ProfitLoss: React.FC = () => {
   const totalExpenses = expenseAccounts.reduce((sum, acc) => sum + acc.balance, 0);
   const netIncome = totalRevenue - totalExpenses;
 
+  const handleExportCSV = () => {
+    const data = [
+      ...revenueAccounts.map(a => ({ Type: 'Revenue', Code: a.code, Account: a.name, Amount: a.balance })),
+      ...expenseAccounts.map(a => ({ Type: 'Expense', Code: a.code, Account: a.name, Amount: a.balance })),
+      { Type: 'Total', Code: '', Account: 'Net Income', Amount: netIncome }
+    ];
+    exportToCSV(data, `profit-loss-${startDate}-to-${endDate}`);
+    toast.success('Exported to CSV');
+  };
+
+  const handleExportExcel = () => {
+    const data = [
+      ...revenueAccounts.map(a => ({ Type: 'Revenue', Code: a.code, Account: a.name, Amount: a.balance })),
+      ...expenseAccounts.map(a => ({ Type: 'Expense', Code: a.code, Account: a.name, Amount: a.balance })),
+      { Type: 'Total', Code: '', Account: 'Net Income', Amount: netIncome }
+    ];
+    exportToExcel(data, `profit-loss-${startDate}-to-${endDate}`, 'Profit & Loss');
+    toast.success('Exported to Excel');
+  };
+
+  const handleExportPDF = () => {
+    const revenueRows = revenueAccounts.map(a => [a.code, a.name, formatCurrency(a.balance)]);
+    const expenseRows = expenseAccounts.map(a => [a.code, a.name, formatCurrency(a.balance)]);
+    
+    const html = `
+      <h2>Period: ${startDate} to ${endDate}</h2>
+      <h3>Revenue</h3>
+      ${generatePDFTable(['Code', 'Account', 'Amount'], revenueRows, { totalRow: ['', 'Total Revenue', formatCurrency(totalRevenue)] })}
+      <h3>Expenses</h3>
+      ${generatePDFTable(['Code', 'Account', 'Amount'], expenseRows, { totalRow: ['', 'Total Expenses', formatCurrency(totalExpenses)] })}
+      <h3>Net ${netIncome >= 0 ? 'Profit' : 'Loss'}: ${formatCurrency(netIncome)}</h3>
+    `;
+    exportToPDF(`Profit & Loss Statement - ${selectedCompany?.name}`, html);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -113,6 +155,28 @@ export const ProfitLoss: React.FC = () => {
           <h1 className="text-3xl font-heading font-bold text-foreground">Profit & Loss Statement</h1>
           <p className="text-muted-foreground mt-1">Income and expenses summary</p>
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleExportPDF}>
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              Export PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleExportExcel}>
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              Export Excel
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleExportCSV}>
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              Export CSV
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <Card>

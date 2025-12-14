@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileText, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, FileText, Eye, ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Button } from '@/components/ui/button';
@@ -40,27 +40,45 @@ export const JournalEntries: React.FC = () => {
   const [viewingLines, setViewingLines] = useState<JournalLine[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  
+  // Date filters
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const fetchEntries = async () => {
     if (!selectedCompany) return;
     setIsLoading(true);
     
-    // Get total count
-    const { count } = await supabase
+    // Build query with date filters
+    let countQuery = supabase
       .from('journal_entries')
       .select('*', { count: 'exact', head: true })
       .eq('company_id', selectedCompany.id);
     
+    let dataQuery = supabase
+      .from('journal_entries')
+      .select('*')
+      .eq('company_id', selectedCompany.id);
+
+    // Apply date filters
+    if (startDate) {
+      countQuery = countQuery.gte('entry_date', startDate);
+      dataQuery = dataQuery.gte('entry_date', startDate);
+    }
+    if (endDate) {
+      countQuery = countQuery.lte('entry_date', endDate);
+      dataQuery = dataQuery.lte('entry_date', endDate);
+    }
+    
+    // Get total count
+    const { count } = await countQuery;
     setTotalCount(count || 0);
     
     // Get paginated data - newest first
     const from = (currentPage - 1) * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
     
-    const { data, error } = await supabase
-      .from('journal_entries')
-      .select('*')
-      .eq('company_id', selectedCompany.id)
+    const { data, error } = await dataQuery
       .order('entry_date', { ascending: false })
       .order('created_at', { ascending: false })
       .range(from, to);
@@ -71,11 +89,11 @@ export const JournalEntries: React.FC = () => {
 
   useEffect(() => { 
     setCurrentPage(1);
-  }, [selectedCompany]);
+  }, [selectedCompany, startDate, endDate]);
 
   useEffect(() => { 
     fetchEntries(); 
-  }, [selectedCompany, currentPage]);
+  }, [selectedCompany, currentPage, startDate, endDate]);
 
   const handleView = async (entry: JournalEntry) => {
     setViewingEntry(entry);
@@ -106,6 +124,11 @@ export const JournalEntries: React.FC = () => {
     setIsViewDialogOpen(true);
   };
 
+  const clearDateFilters = () => {
+    setStartDate('');
+    setEndDate('');
+  };
+
   const filteredEntries = entries.filter(e => 
     e.entry_number.toLowerCase().includes(searchQuery.toLowerCase()) || 
     e.description?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -123,16 +146,49 @@ export const JournalEntries: React.FC = () => {
         <h1 className="text-3xl font-heading font-bold text-foreground">Journal Entries</h1>
         <p className="text-muted-foreground mt-1">View all accounting transactions</p>
       </div>
-      
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input 
-          value={searchQuery} 
-          onChange={e => setSearchQuery(e.target.value)} 
-          placeholder="Search entries..." 
-          className="pl-10 input-field" 
-        />
-      </div>
+
+      {/* Filters */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row gap-4 items-end">
+            <div className="flex-1">
+              <label className="form-label">Search</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input 
+                  value={searchQuery} 
+                  onChange={e => setSearchQuery(e.target.value)} 
+                  placeholder="Search entries..." 
+                  className="pl-10 input-field" 
+                />
+              </div>
+            </div>
+            <div className="w-full sm:w-40">
+              <label className="form-label">From Date</label>
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="input-field"
+              />
+            </div>
+            <div className="w-full sm:w-40">
+              <label className="form-label">To Date</label>
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="input-field"
+              />
+            </div>
+            {(startDate || endDate) && (
+              <Button variant="outline" onClick={clearDateFilters}>
+                Clear
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
       
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground">Loading...</div>
