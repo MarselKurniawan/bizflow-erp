@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Wallet, Scale } from 'lucide-react';
+import { Building2, Wallet, Scale, Download, FileSpreadsheet } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import { exportToCSV, exportToExcel, exportToPDF, generatePDFTable } from '@/lib/exportUtils';
 
 interface AccountBalance {
   account_type: string;
@@ -100,6 +107,46 @@ export const BalanceSheet: React.FC = () => {
   const totalEquity = equityAccounts.reduce((sum, acc) => sum + acc.balance, 0);
   const totalLiabilitiesAndEquity = totalLiabilities + totalEquity;
 
+  const handleExportCSV = () => {
+    const data = [
+      ...cashBankAccounts.map(a => ({ Category: 'Cash & Bank', Code: a.code, Account: a.name, Balance: a.balance })),
+      ...assets.map(a => ({ Category: 'Assets', Code: a.code, Account: a.name, Balance: a.balance })),
+      ...liabilities.map(a => ({ Category: 'Liabilities', Code: a.code, Account: a.name, Balance: a.balance })),
+      ...equityAccounts.map(a => ({ Category: 'Equity', Code: a.code, Account: a.name, Balance: a.balance })),
+    ];
+    exportToCSV(data, `balance-sheet-${asOfDate}`);
+    toast.success('Exported to CSV');
+  };
+
+  const handleExportExcel = () => {
+    const data = [
+      ...cashBankAccounts.map(a => ({ Category: 'Cash & Bank', Code: a.code, Account: a.name, Balance: a.balance })),
+      ...assets.map(a => ({ Category: 'Assets', Code: a.code, Account: a.name, Balance: a.balance })),
+      ...liabilities.map(a => ({ Category: 'Liabilities', Code: a.code, Account: a.name, Balance: a.balance })),
+      ...equityAccounts.map(a => ({ Category: 'Equity', Code: a.code, Account: a.name, Balance: a.balance })),
+    ];
+    exportToExcel(data, `balance-sheet-${asOfDate}`, 'Balance Sheet');
+    toast.success('Exported to Excel');
+  };
+
+  const handleExportPDF = () => {
+    const assetRows = [...cashBankAccounts, ...assets].map(a => [a.code, a.name, formatCurrency(a.balance)]);
+    const liabilityRows = liabilities.map(a => [a.code, a.name, formatCurrency(a.balance)]);
+    const equityRows = equityAccounts.map(a => [a.code, a.name, formatCurrency(a.balance)]);
+    
+    const html = `
+      <h2>As of: ${asOfDate}</h2>
+      <h3>Assets</h3>
+      ${generatePDFTable(['Code', 'Account', 'Balance'], assetRows, { totalRow: ['', 'Total Assets', formatCurrency(totalAssets)] })}
+      <h3>Liabilities</h3>
+      ${generatePDFTable(['Code', 'Account', 'Balance'], liabilityRows, { totalRow: ['', 'Total Liabilities', formatCurrency(totalLiabilities)] })}
+      <h3>Equity</h3>
+      ${generatePDFTable(['Code', 'Account', 'Balance'], equityRows, { totalRow: ['', 'Total Equity', formatCurrency(totalEquity)] })}
+      <p><strong>Total Liabilities & Equity: ${formatCurrency(totalLiabilitiesAndEquity)}</strong></p>
+    `;
+    exportToPDF(`Balance Sheet - ${selectedCompany?.name}`, html);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -107,6 +154,28 @@ export const BalanceSheet: React.FC = () => {
           <h1 className="text-3xl font-heading font-bold text-foreground">Balance Sheet</h1>
           <p className="text-muted-foreground mt-1">Statement of financial position</p>
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleExportPDF}>
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              Export PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleExportExcel}>
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              Export Excel
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleExportCSV}>
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              Export CSV
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <Card>
