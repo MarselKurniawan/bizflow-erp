@@ -341,35 +341,31 @@ export const BalanceSheet: React.FC = () => {
                       </tr>
                     </>
                   )}
-                  {equityAccounts.length > 0 && (
-                    <>
-                      <tr className="bg-muted/30">
-                        <td colSpan={3} className="font-semibold text-success">Equity</td>
-                      </tr>
-                      {equityAccounts.map((acc) => (
-                        <tr key={acc.code}>
-                          <td className="font-mono pl-6">{acc.code}</td>
-                          <td>{acc.name}</td>
-                          <td className="text-right font-medium">
-                            {formatCurrency(acc.balance)}
-                          </td>
-                        </tr>
-                      ))}
-                      {retainedEarnings !== 0 && (
-                        <tr>
-                          <td className="font-mono pl-6">-</td>
-                          <td className="italic">Retained Earnings (Net Income)</td>
-                          <td className="text-right font-medium">
-                            {formatCurrency(retainedEarnings)}
-                          </td>
-                        </tr>
-                      )}
-                      <tr className="font-semibold">
-                        <td colSpan={2} className="pl-6">Total Equity</td>
-                        <td className="text-right text-success">{formatCurrency(totalEquity)}</td>
-                      </tr>
-                    </>
-                  )}
+                  {/* Equity Section - Always show even if no equity accounts */}
+                  <tr className="bg-muted/30">
+                    <td colSpan={3} className="font-semibold text-success">Equity</td>
+                  </tr>
+                  {equityAccounts.map((acc) => (
+                    <tr key={acc.code}>
+                      <td className="font-mono pl-6">{acc.code}</td>
+                      <td>{acc.name}</td>
+                      <td className="text-right font-medium">
+                        {formatCurrency(acc.balance)}
+                      </td>
+                    </tr>
+                  ))}
+                  {/* Retained Earnings - Always show as it's calculated from Revenue - Expenses */}
+                  <tr className="bg-muted/10">
+                    <td className="font-mono pl-6 text-muted-foreground">RE</td>
+                    <td className="italic">Retained Earnings (Net Income)</td>
+                    <td className="text-right font-medium">
+                      {formatCurrency(retainedEarnings)}
+                    </td>
+                  </tr>
+                  <tr className="font-semibold border-t">
+                    <td colSpan={2} className="pl-6">Total Equity</td>
+                    <td className="text-right text-success">{formatCurrency(totalEquity)}</td>
+                  </tr>
                   <tr className="bg-muted/50 font-bold">
                     <td colSpan={2}>Total Liabilities & Equity</td>
                     <td className="text-right">{formatCurrency(totalLiabilitiesAndEquity)}</td>
