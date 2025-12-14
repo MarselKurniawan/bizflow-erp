@@ -114,7 +114,7 @@ export const Auth: React.FC = () => {
             </div>
           </div>
           <h1 className="text-4xl lg:text-5xl font-heading font-bold text-primary-foreground mb-4">
-            ERP System
+            IarPhi
           </h1>
           <p className="text-xl text-primary-foreground/80 max-w-md">
             Manage your business operations efficiently with our comprehensive enterprise resource planning solution.
@@ -165,7 +165,7 @@ export const Auth: React.FC = () => {
             <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
               <Building2 className="w-6 h-6 text-primary-foreground" />
             </div>
-            <span className="font-heading font-bold text-xl">ERP System</span>
+            <span className="font-heading font-bold text-xl">IarPhi</span>
           </div>
 
           <div className="text-center mb-8">
