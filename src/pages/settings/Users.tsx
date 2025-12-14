@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Shield, User as UserIcon, Building2 } from 'lucide-react';
+import { Plus, Trash2, Shield, User as UserIcon, Building2, Pencil } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,8 +11,17 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Select,
   SelectContent,
@@ -54,10 +63,24 @@ const Users: React.FC = () => {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
+
+  // Add/Edit user dialog
+  const [userDialogOpen, setUserDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
+  const [userForm, setUserForm] = useState({
+    email: '',
+    password: '',
+    full_name: '',
+    role: 'user' as AppRole,
+  });
+  const [saving, setSaving] = useState(false);
+
+  // Delete dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserWithRole | null>(null);
 
   useEffect(() => {
     if (isAdmin) {
@@ -68,7 +91,6 @@ const Users: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      // Fetch all profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
@@ -76,21 +98,18 @@ const Users: React.FC = () => {
 
       if (profilesError) throw profilesError;
 
-      // Fetch all user roles
       const { data: roles, error: rolesError } = await supabase
         .from('user_roles')
         .select('*');
 
       if (rolesError) throw rolesError;
 
-      // Fetch all user companies with company details
       const { data: userCompanies, error: ucError } = await supabase
         .from('user_companies')
         .select('user_id, company_id, companies(id, name, code)');
 
       if (ucError) throw ucError;
 
-      // Combine data
       const usersWithRoles: UserWithRole[] = (profiles || []).map(profile => ({
         id: profile.id,
         email: profile.email,
@@ -129,13 +148,11 @@ const Users: React.FC = () => {
 
   const handleRoleChange = async (userId: string, newRole: AppRole) => {
     try {
-      // Remove existing roles
       await supabase
         .from('user_roles')
         .delete()
         .eq('user_id', userId);
 
-      // Add new role
       const { error } = await supabase
         .from('user_roles')
         .insert({ user_id: userId, role: newRole });
@@ -160,13 +177,11 @@ const Users: React.FC = () => {
     if (!selectedUser) return;
 
     try {
-      // Remove existing assignments
       await supabase
         .from('user_companies')
         .delete()
         .eq('user_id', selectedUser.id);
 
-      // Add new assignments
       if (selectedCompanies.length > 0) {
         const { error } = await supabase
           .from('user_companies')
@@ -197,6 +212,148 @@ const Users: React.FC = () => {
     );
   };
 
+  // Open dialog for adding new user
+  const openAddUserDialog = () => {
+    setEditingUser(null);
+    setUserForm({ email: '', password: '', full_name: '', role: 'user' });
+    setUserDialogOpen(true);
+  };
+
+  // Open dialog for editing user
+  const openEditUserDialog = (user: UserWithRole) => {
+    setEditingUser(user);
+    setUserForm({
+      email: user.email || '',
+      password: '',
+      full_name: user.full_name || '',
+      role: user.roles[0] || 'user',
+    });
+    setUserDialogOpen(true);
+  };
+
+  // Handle add new user
+  const handleAddUser = async () => {
+    if (!userForm.email.trim() || !userForm.password.trim()) {
+      toast.error('Email and password are required');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      // Sign up the new user
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: userForm.email.trim(),
+        password: userForm.password.trim(),
+        options: {
+          data: {
+            full_name: userForm.full_name.trim(),
+          },
+        },
+      });
+
+      if (signUpError) throw signUpError;
+
+      if (signUpData.user) {
+        // Add role
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({ user_id: signUpData.user.id, role: userForm.role });
+
+        if (roleError) console.error('Error adding role:', roleError);
+      }
+
+      toast.success('User created successfully');
+      setUserDialogOpen(false);
+      fetchUsers();
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      toast.error(error.message || 'Failed to create user');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Handle edit user (profile only)
+  const handleEditUser = async () => {
+    if (!editingUser) return;
+
+    setSaving(true);
+    try {
+      // Update profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          full_name: userForm.full_name.trim(),
+          email: userForm.email.trim(),
+        })
+        .eq('id', editingUser.id);
+
+      if (profileError) throw profileError;
+
+      // Update role
+      await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', editingUser.id);
+
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({ user_id: editingUser.id, role: userForm.role });
+
+      if (roleError) throw roleError;
+
+      toast.success('User updated successfully');
+      setUserDialogOpen(false);
+      fetchUsers();
+    } catch (error: any) {
+      console.error('Error updating user:', error);
+      toast.error(error.message || 'Failed to update user');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Open delete confirmation
+  const openDeleteDialog = (user: UserWithRole) => {
+    setUserToDelete(user);
+    setDeleteDialogOpen(true);
+  };
+
+  // Handle delete user
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+
+    try {
+      // Delete user roles
+      await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userToDelete.id);
+
+      // Delete user companies
+      await supabase
+        .from('user_companies')
+        .delete()
+        .eq('user_id', userToDelete.id);
+
+      // Delete profile
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userToDelete.id);
+
+      if (error) throw error;
+
+      toast.success('User deleted successfully');
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
+      fetchUsers();
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      toast.error(error.message || 'Failed to delete user');
+    }
+  };
+
   if (!isAdmin) {
     return (
       <div className="p-6">
@@ -220,6 +377,10 @@ const Users: React.FC = () => {
           <h1 className="text-3xl font-heading font-bold text-foreground">User Management</h1>
           <p className="text-muted-foreground mt-1">Manage users, roles and company assignments</p>
         </div>
+        <Button onClick={openAddUserDialog}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add User
+        </Button>
       </div>
 
       <Card>
@@ -293,16 +454,33 @@ const Users: React.FC = () => {
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      {!user.roles.includes('admin') && (
+                      <div className="flex justify-end gap-2">
+                        {!user.roles.includes('admin') && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openAssignDialog(user)}
+                          >
+                            <Building2 className="w-4 h-4 mr-1" />
+                            Assign
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => openAssignDialog(user)}
+                          onClick={() => openEditUserDialog(user)}
                         >
-                          <Building2 className="w-4 h-4 mr-1" />
-                          Assign
+                          <Pencil className="w-4 h-4" />
                         </Button>
-                      )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openDeleteDialog(user)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -311,6 +489,75 @@ const Users: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Add/Edit User Dialog */}
+      <Dialog open={userDialogOpen} onOpenChange={setUserDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingUser ? 'Edit User' : 'Add New User'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="full_name">Full Name</Label>
+              <Input
+                id="full_name"
+                value={userForm.full_name}
+                onChange={(e) => setUserForm(prev => ({ ...prev, full_name: e.target.value }))}
+                placeholder="Enter full name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={userForm.email}
+                onChange={(e) => setUserForm(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="Enter email"
+                disabled={!!editingUser}
+              />
+            </div>
+            {!editingUser && (
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={userForm.password}
+                  onChange={(e) => setUserForm(prev => ({ ...prev, password: e.target.value }))}
+                  placeholder="Enter password"
+                />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="role">Role</Label>
+              <Select
+                value={userForm.role}
+                onValueChange={(value) => setUserForm(prev => ({ ...prev, role: value as AppRole }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setUserDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={editingUser ? handleEditUser : handleAddUser}
+                disabled={saving}
+              >
+                {saving ? 'Saving...' : editingUser ? 'Save Changes' : 'Create User'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Assign Companies Dialog */}
       <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
@@ -351,6 +598,28 @@ const Users: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {userToDelete?.full_name || userToDelete?.email}? 
+              This action cannot be undone and will remove all their roles and company assignments.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteUser}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
