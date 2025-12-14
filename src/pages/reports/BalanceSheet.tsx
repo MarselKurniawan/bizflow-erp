@@ -30,8 +30,8 @@ export const BalanceSheet: React.FC = () => {
   const [cashBankAccounts, setCashBankAccounts] = useState<AccountBalance[]>([]);
   const [liabilities, setLiabilities] = useState<AccountBalance[]>([]);
   const [equityAccounts, setEquityAccounts] = useState<AccountBalance[]>([]);
+  const [retainedEarnings, setRetainedEarnings] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-
   const fetchData = async () => {
     if (!selectedCompany) return;
 
@@ -43,10 +43,10 @@ export const BalanceSheet: React.FC = () => {
       .select(`
         debit_amount,
         credit_amount,
-        account:chart_of_accounts!journal_entry_lines_account_id_fkey(
+        account:chart_of_accounts(
           id, code, name, account_type
         ),
-        journal_entry:journal_entries!journal_entry_lines_journal_entry_id_fkey(
+        journal_entry:journal_entries(
           entry_date, is_posted, company_id
         )
       `)
@@ -91,6 +91,18 @@ export const BalanceSheet: React.FC = () => {
     });
 
     const accounts = Array.from(accountMap.values());
+    
+    // Calculate retained earnings from revenue and expense accounts
+    // Revenue: credit increases (positive), Expense: debit increases (negative for equity)
+    const revenueTotal = accounts
+      .filter(a => a.account_type === 'revenue')
+      .reduce((sum, acc) => sum + acc.balance, 0);
+    const expenseTotal = accounts
+      .filter(a => a.account_type === 'expense')
+      .reduce((sum, acc) => sum + acc.balance, 0);
+    const netIncome = revenueTotal - expenseTotal;
+    
+    setRetainedEarnings(netIncome);
     setAssets(accounts.filter(a => a.account_type === 'asset').sort((a, b) => a.code.localeCompare(b.code)));
     setCashBankAccounts(accounts.filter(a => a.account_type === 'cash_bank').sort((a, b) => a.code.localeCompare(b.code)));
     setLiabilities(accounts.filter(a => a.account_type === 'liability').sort((a, b) => a.code.localeCompare(b.code)));
@@ -104,7 +116,8 @@ export const BalanceSheet: React.FC = () => {
 
   const totalAssets = assets.reduce((sum, acc) => sum + acc.balance, 0) + cashBankAccounts.reduce((sum, acc) => sum + acc.balance, 0);
   const totalLiabilities = liabilities.reduce((sum, acc) => sum + acc.balance, 0);
-  const totalEquity = equityAccounts.reduce((sum, acc) => sum + acc.balance, 0);
+  const totalEquityAccounts = equityAccounts.reduce((sum, acc) => sum + acc.balance, 0);
+  const totalEquity = totalEquityAccounts + retainedEarnings;
   const totalLiabilitiesAndEquity = totalLiabilities + totalEquity;
 
   const handleExportCSV = () => {
@@ -342,6 +355,15 @@ export const BalanceSheet: React.FC = () => {
                           </td>
                         </tr>
                       ))}
+                      {retainedEarnings !== 0 && (
+                        <tr>
+                          <td className="font-mono pl-6">-</td>
+                          <td className="italic">Retained Earnings (Net Income)</td>
+                          <td className="text-right font-medium">
+                            {formatCurrency(retainedEarnings)}
+                          </td>
+                        </tr>
+                      )}
                       <tr className="font-semibold">
                         <td colSpan={2} className="pl-6">Total Equity</td>
                         <td className="text-right text-success">{formatCurrency(totalEquity)}</td>
