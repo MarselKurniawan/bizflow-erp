@@ -63,9 +63,6 @@ const Users: React.FC = () => {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
-  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
-  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
 
   // Add/Edit user dialog
   const [userDialogOpen, setUserDialogOpen] = useState(false);
@@ -75,6 +72,7 @@ const Users: React.FC = () => {
     password: '',
     full_name: '',
     role: 'user' as AppRole,
+    companyIds: [] as string[],
   });
   const [saving, setSaving] = useState(false);
 
@@ -167,55 +165,10 @@ const Users: React.FC = () => {
     }
   };
 
-  const openAssignDialog = (user: UserWithRole) => {
-    setSelectedUser(user);
-    setSelectedCompanies(user.companies.map(c => c.id));
-    setAssignDialogOpen(true);
-  };
-
-  const handleAssignCompanies = async () => {
-    if (!selectedUser) return;
-
-    try {
-      await supabase
-        .from('user_companies')
-        .delete()
-        .eq('user_id', selectedUser.id);
-
-      if (selectedCompanies.length > 0) {
-        const { error } = await supabase
-          .from('user_companies')
-          .insert(
-            selectedCompanies.map(companyId => ({
-              user_id: selectedUser.id,
-              company_id: companyId,
-            }))
-          );
-
-        if (error) throw error;
-      }
-
-      toast.success('Companies assigned successfully');
-      setAssignDialogOpen(false);
-      fetchUsers();
-    } catch (error) {
-      console.error('Error assigning companies:', error);
-      toast.error('Failed to assign companies');
-    }
-  };
-
-  const toggleCompanySelection = (companyId: string) => {
-    setSelectedCompanies(prev =>
-      prev.includes(companyId)
-        ? prev.filter(id => id !== companyId)
-        : [...prev, companyId]
-    );
-  };
-
   // Open dialog for adding new user
   const openAddUserDialog = () => {
     setEditingUser(null);
-    setUserForm({ email: '', password: '', full_name: '', role: 'user' });
+    setUserForm({ email: '', password: '', full_name: '', role: 'user', companyIds: [] });
     setUserDialogOpen(true);
   };
 
@@ -227,6 +180,7 @@ const Users: React.FC = () => {
       password: '',
       full_name: user.full_name || '',
       role: user.roles[0] || 'user',
+      companyIds: user.companies.map(c => c.id),
     });
     setUserDialogOpen(true);
   };
@@ -260,6 +214,20 @@ const Users: React.FC = () => {
           .insert({ user_id: signUpData.user.id, role: userForm.role });
 
         if (roleError) console.error('Error adding role:', roleError);
+
+        // Assign companies (only for non-admin users)
+        if (userForm.role !== 'admin' && userForm.companyIds.length > 0) {
+          const { error: companyError } = await supabase
+            .from('user_companies')
+            .insert(
+              userForm.companyIds.map(companyId => ({
+                user_id: signUpData.user!.id,
+                company_id: companyId,
+              }))
+            );
+
+          if (companyError) console.error('Error assigning companies:', companyError);
+        }
       }
 
       toast.success('User created successfully');
@@ -301,6 +269,25 @@ const Users: React.FC = () => {
         .insert({ user_id: editingUser.id, role: userForm.role });
 
       if (roleError) throw roleError;
+
+      // Update company assignments (only for non-admin users)
+      await supabase
+        .from('user_companies')
+        .delete()
+        .eq('user_id', editingUser.id);
+
+      if (userForm.role !== 'admin' && userForm.companyIds.length > 0) {
+        const { error: companyError } = await supabase
+          .from('user_companies')
+          .insert(
+            userForm.companyIds.map(companyId => ({
+              user_id: editingUser.id,
+              company_id: companyId,
+            }))
+          );
+
+        if (companyError) console.error('Error assigning companies:', companyError);
+      }
 
       toast.success('User updated successfully');
       setUserDialogOpen(false);
@@ -455,16 +442,6 @@ const Users: React.FC = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        {!user.roles.includes('admin') && (
-                          <Button
-                            variant={user.companies.length === 0 ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => openAssignDialog(user)}
-                          >
-                            <Building2 className="w-4 h-4 mr-1" />
-                            {user.companies.length === 0 ? 'Assign Company' : 'Assign'}
-                          </Button>
-                        )}
                         <Button
                           variant="outline"
                           size="sm"
@@ -533,17 +510,57 @@ const Users: React.FC = () => {
               <Label htmlFor="role">Role</Label>
               <Select
                 value={userForm.role}
-                onValueChange={(value) => setUserForm(prev => ({ ...prev, role: value as AppRole }))}
+                onValueChange={(value) => setUserForm(prev => ({ ...prev, role: value as AppRole, companyIds: value === 'admin' ? [] : prev.companyIds }))}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="admin">Admin (All Companies)</SelectItem>
                   <SelectItem value="user">User</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            {userForm.role !== 'admin' && (
+              <div className="space-y-2">
+                <Label>Assign Companies</Label>
+                <p className="text-xs text-muted-foreground">
+                  Select which companies this user can access:
+                </p>
+                <div className="max-h-40 overflow-y-auto space-y-2 border rounded-lg p-2">
+                  {companies.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-2">No companies available</p>
+                  ) : (
+                    companies.map(company => (
+                      <div
+                        key={company.id}
+                        className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50"
+                      >
+                        <Checkbox
+                          id={`form-company-${company.id}`}
+                          checked={userForm.companyIds.includes(company.id)}
+                          onCheckedChange={(checked) => {
+                            setUserForm(prev => ({
+                              ...prev,
+                              companyIds: checked
+                                ? [...prev.companyIds, company.id]
+                                : prev.companyIds.filter(id => id !== company.id)
+                            }));
+                          }}
+                        />
+                        <Label htmlFor={`form-company-${company.id}`} className="flex-1 cursor-pointer">
+                          <span className="font-medium">{company.name}</span>
+                          <span className="text-muted-foreground ml-2">({company.code})</span>
+                        </Label>
+                      </div>
+                    ))
+                  )}
+                </div>
+                {userForm.companyIds.length === 0 && (
+                  <p className="text-xs text-amber-600">User won't be able to access any company data without assignments.</p>
+                )}
+              </div>
+            )}
             <div className="flex justify-end gap-2 pt-4">
               <Button variant="outline" onClick={() => setUserDialogOpen(false)}>
                 Cancel
@@ -559,45 +576,6 @@ const Users: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Assign Companies Dialog */}
-      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Assign Companies to {selectedUser?.full_name || selectedUser?.email}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Select which companies this user can access:
-            </p>
-            <div className="max-h-64 overflow-y-auto space-y-2">
-              {companies.map(company => (
-                <div
-                  key={company.id}
-                  className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50"
-                >
-                  <Checkbox
-                    id={company.id}
-                    checked={selectedCompanies.includes(company.id)}
-                    onCheckedChange={() => toggleCompanySelection(company.id)}
-                  />
-                  <Label htmlFor={company.id} className="flex-1 cursor-pointer">
-                    <span className="font-medium">{company.name}</span>
-                    <span className="text-muted-foreground ml-2">({company.code})</span>
-                  </Label>
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleAssignCompanies}>
-                Save Assignments
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
