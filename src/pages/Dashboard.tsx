@@ -141,57 +141,54 @@ export const Dashboard: React.FC = () => {
         .select('id', { count: 'exact', head: true })
         .eq('company_id', selectedCompany.id);
 
-      // Calculate cash balance from journal entries
-      const { data: cashEntries } = await supabase
-        .from('journal_entry_lines')
-        .select(`
-          debit_amount,
-          credit_amount,
-          account:chart_of_accounts!journal_entry_lines_account_id_fkey(
-            account_type
-          ),
-          journal_entry:journal_entries!journal_entry_lines_journal_entry_id_fkey(
-            is_posted, company_id
-          )
-        `)
-        .eq('journal_entry.company_id', selectedCompany.id)
-        .eq('journal_entry.is_posted', true)
-        .eq('account.account_type', 'cash_bank');
+      // Get posted journal entries for this company first
+      const { data: postedJournals } = await supabase
+        .from('journal_entries')
+        .select('id')
+        .eq('company_id', selectedCompany.id)
+        .eq('is_posted', true);
 
+      const postedJournalIds = (postedJournals || []).map(j => j.id);
+
+      // Calculate cash balance from journal entries
       let cashBalance = 0;
-      (cashEntries || []).forEach((entry: any) => {
-        cashBalance += (entry.debit_amount || 0) - (entry.credit_amount || 0);
-      });
+      if (postedJournalIds.length > 0) {
+        const { data: cashEntries } = await supabase
+          .from('journal_entry_lines')
+          .select(`
+            debit_amount,
+            credit_amount,
+            account:chart_of_accounts!journal_entry_lines_account_id_fkey(
+              account_type
+            )
+          `)
+          .in('journal_entry_id', postedJournalIds);
+
+        (cashEntries || []).forEach((entry: any) => {
+          if (entry.account?.account_type === 'cash_bank') {
+            cashBalance += (entry.debit_amount || 0) - (entry.credit_amount || 0);
+          }
+        });
+      }
 
       // Calculate revenue and expenses from journal entries (current year)
       const startOfYear = new Date();
       startOfYear.setMonth(0, 1);
-      const { data: plEntries } = await supabase
-        .from('journal_entry_lines')
-        .select(`
-          debit_amount,
-          credit_amount,
-          account:chart_of_accounts!journal_entry_lines_account_id_fkey(
-            account_type
-          ),
-          journal_entry:journal_entries!journal_entry_lines_journal_entry_id_fkey(
-            entry_date, is_posted, company_id
-          )
-        `)
-        .eq('journal_entry.company_id', selectedCompany.id)
-        .eq('journal_entry.is_posted', true)
-        .gte('journal_entry.entry_date', startOfYear.toISOString().split('T')[0]);
+      
+      // Get posted journals for this year
+      const { data: yearJournals } = await supabase
+        .from('journal_entries')
+        .select('id, entry_date')
+        .eq('company_id', selectedCompany.id)
+        .eq('is_posted', true)
+        .gte('entry_date', startOfYear.toISOString().split('T')[0]);
+
+      const yearJournalIds = (yearJournals || []).map(j => j.id);
+      const journalDateMap = new Map((yearJournals || []).map(j => [j.id, j.entry_date]));
 
       let totalRevenue = 0;
       let totalExpenses = 0;
-      (plEntries || []).forEach((entry: any) => {
-        if (entry.account?.account_type === 'revenue') {
-          totalRevenue += (entry.credit_amount || 0) - (entry.debit_amount || 0);
-        } else if (entry.account?.account_type === 'expense') {
-          totalExpenses += (entry.debit_amount || 0) - (entry.credit_amount || 0);
-        }
-      });
-
+      
       // Get monthly data for chart
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const currentMonth = new Date().getMonth();
@@ -206,21 +203,44 @@ export const Dashboard: React.FC = () => {
         });
       }
 
-      (plEntries || []).forEach((entry: any) => {
-        if (!entry.journal_entry?.entry_date) return;
-        const entryMonth = new Date(entry.journal_entry.entry_date).getMonth();
-        const monthData = monthlyStats.find((m, idx) => {
-          const targetMonth = (currentMonth - (5 - idx) + 12) % 12;
-          return targetMonth === entryMonth;
-        });
-        if (monthData) {
+      if (yearJournalIds.length > 0) {
+        const { data: plEntries } = await supabase
+          .from('journal_entry_lines')
+          .select(`
+            debit_amount,
+            credit_amount,
+            journal_entry_id,
+            account:chart_of_accounts!journal_entry_lines_account_id_fkey(
+              account_type
+            )
+          `)
+          .in('journal_entry_id', yearJournalIds);
+
+        (plEntries || []).forEach((entry: any) => {
           if (entry.account?.account_type === 'revenue') {
-            monthData.revenue += (entry.credit_amount || 0) - (entry.debit_amount || 0);
+            totalRevenue += (entry.credit_amount || 0) - (entry.debit_amount || 0);
           } else if (entry.account?.account_type === 'expense') {
-            monthData.expense += (entry.debit_amount || 0) - (entry.credit_amount || 0);
+            totalExpenses += (entry.debit_amount || 0) - (entry.credit_amount || 0);
           }
-        }
-      });
+          
+          // Monthly chart data
+          const entryDate = journalDateMap.get(entry.journal_entry_id);
+          if (entryDate) {
+            const entryMonth = new Date(entryDate).getMonth();
+            const monthData = monthlyStats.find((m, idx) => {
+              const targetMonth = (currentMonth - (5 - idx) + 12) % 12;
+              return targetMonth === entryMonth;
+            });
+            if (monthData) {
+              if (entry.account?.account_type === 'revenue') {
+                monthData.revenue += (entry.credit_amount || 0) - (entry.debit_amount || 0);
+              } else if (entry.account?.account_type === 'expense') {
+                monthData.expense += (entry.debit_amount || 0) - (entry.credit_amount || 0);
+              }
+            }
+          }
+        });
+      }
 
       setMonthlyData(monthlyStats);
 
