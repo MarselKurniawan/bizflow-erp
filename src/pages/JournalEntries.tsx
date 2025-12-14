@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileText, Eye, ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
+import { Search, FileText, Eye, ChevronLeft, ChevronRight, CalendarIcon, Plus } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import { ManualJournalEntryForm } from '@/components/journal/ManualJournalEntryForm';
 
 interface JournalEntry {
   id: string;
@@ -36,6 +37,7 @@ export const JournalEntries: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [viewingEntry, setViewingEntry] = useState<JournalEntry | null>(null);
   const [viewingLines, setViewingLines] = useState<JournalLine[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -142,9 +144,15 @@ export const JournalEntries: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-heading font-bold text-foreground">Journal Entries</h1>
-        <p className="text-muted-foreground mt-1">View all accounting transactions</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-heading font-bold text-foreground">Journal Entries</h1>
+          <p className="text-muted-foreground mt-1">View and manage accounting transactions</p>
+        </div>
+        <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add Manual Entry
+        </Button>
       </div>
 
       {/* Filters */}
@@ -371,6 +379,12 @@ export const JournalEntries: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+      {/* Manual Entry Form */}
+      <ManualJournalEntryForm
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onSuccess={fetchEntries}
+      />
     </div>
   );
 };
