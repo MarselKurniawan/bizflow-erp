@@ -140,7 +140,15 @@ export const Sidebar: React.FC = () => {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto scrollbar-thin py-4 px-3">
         <ul className="space-y-1">
-          {menuItems.map((item) => (
+          {menuItems
+            .filter((item) => {
+              // Hide Settings menu for non-admin users
+              if (item.label === 'Settings' && !isAdmin) {
+                return false;
+              }
+              return true;
+            })
+            .map((item) => (
             <li key={item.label}>
               {item.path ? (
                 <NavLink
