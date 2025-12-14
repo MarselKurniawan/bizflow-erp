@@ -67,11 +67,13 @@ export const ProfitLoss: React.FC = () => {
       return;
     }
 
-    // Group by account
+    // Group by account - filter entries that match the company (Supabase filter on joined tables can return null)
     const accountMap = new Map<string, AccountBalance>();
     
     (entries || []).forEach((entry: any) => {
-      if (!entry.account) return;
+      // Skip if no account or journal_entry is null (filtered out by company_id)
+      if (!entry.account || !entry.journal_entry) return;
+      
       const key = entry.account.id;
       
       if (!accountMap.has(key)) {
