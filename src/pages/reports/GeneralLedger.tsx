@@ -97,6 +97,8 @@ export const GeneralLedger: React.FC = () => {
 
     let opening = 0;
     (openingData || []).forEach((entry: any) => {
+      // Skip if journal_entry is null (filtered out by company_id)
+      if (!entry.journal_entry) return;
       const debit = entry.debit_amount || 0;
       const credit = entry.credit_amount || 0;
       opening += isDebitNormal ? (debit - credit) : (credit - debit);
@@ -129,20 +131,22 @@ export const GeneralLedger: React.FC = () => {
     }
 
     let runningBalance = opening;
-    const ledger: LedgerEntry[] = (entries || []).map((entry: any) => {
-      const debit = entry.debit_amount || 0;
-      const credit = entry.credit_amount || 0;
-      runningBalance += isDebitNormal ? (debit - credit) : (credit - debit);
-      
-      return {
-        entry_date: entry.journal_entry?.entry_date,
-        entry_number: entry.journal_entry?.entry_number,
-        description: entry.description || entry.journal_entry?.description || '',
-        debit_amount: debit,
-        credit_amount: credit,
-        running_balance: runningBalance,
-      };
-    });
+    const ledger: LedgerEntry[] = (entries || [])
+      .filter((entry: any) => entry.journal_entry) // Filter out entries where journal_entry is null
+      .map((entry: any) => {
+        const debit = entry.debit_amount || 0;
+        const credit = entry.credit_amount || 0;
+        runningBalance += isDebitNormal ? (debit - credit) : (credit - debit);
+        
+        return {
+          entry_date: entry.journal_entry?.entry_date,
+          entry_number: entry.journal_entry?.entry_number,
+          description: entry.description || entry.journal_entry?.description || '',
+          debit_amount: debit,
+          credit_amount: credit,
+          running_balance: runningBalance,
+        };
+      });
 
     setLedgerEntries(ledger);
     setIsLoading(false);
