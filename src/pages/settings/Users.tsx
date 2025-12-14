@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Shield, User as UserIcon, Building2, Pencil } from 'lucide-react';
+import { Plus, Trash2, Shield, User as UserIcon, Building2, Pencil, Eye, EyeOff } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -75,6 +75,7 @@ const Users: React.FC = () => {
     companyIds: [] as string[],
   });
   const [saving, setSaving] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Delete dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -169,6 +170,7 @@ const Users: React.FC = () => {
   const openAddUserDialog = () => {
     setEditingUser(null);
     setUserForm({ email: '', password: '', full_name: '', role: 'user', companyIds: [] });
+    setShowPassword(false);
     setUserDialogOpen(true);
   };
 
@@ -481,13 +483,23 @@ const Users: React.FC = () => {
             {!editingUser && (
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={userForm.password}
-                  onChange={(e) => setUserForm(prev => ({ ...prev, password: e.target.value }))}
-                  placeholder="Enter password"
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={userForm.password}
+                    onChange={(e) => setUserForm(prev => ({ ...prev, password: e.target.value }))}
+                    placeholder="Enter password"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
             )}
             <div className="space-y-2">
