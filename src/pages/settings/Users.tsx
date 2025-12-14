@@ -185,7 +185,7 @@ const Users: React.FC = () => {
     setUserDialogOpen(true);
   };
 
-  // Handle add new user
+  // Handle add new user via Edge Function (no auto-login)
   const handleAddUser = async () => {
     if (!userForm.email.trim() || !userForm.password.trim()) {
       toast.error('Email and password are required');
@@ -194,40 +194,24 @@ const Users: React.FC = () => {
 
     setSaving(true);
     try {
-      // Sign up the new user
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: userForm.email.trim(),
-        password: userForm.password.trim(),
-        options: {
-          data: {
-            full_name: userForm.full_name.trim(),
-          },
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      const response = await supabase.functions.invoke('create-user', {
+        body: {
+          email: userForm.email.trim(),
+          password: userForm.password.trim(),
+          full_name: userForm.full_name.trim(),
+          role: userForm.role,
+          companyIds: userForm.companyIds,
         },
       });
 
-      if (signUpError) throw signUpError;
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to create user');
+      }
 
-      if (signUpData.user) {
-        // Add role
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({ user_id: signUpData.user.id, role: userForm.role });
-
-        if (roleError) console.error('Error adding role:', roleError);
-
-        // Assign companies (only for non-admin users)
-        if (userForm.role !== 'admin' && userForm.companyIds.length > 0) {
-          const { error: companyError } = await supabase
-            .from('user_companies')
-            .insert(
-              userForm.companyIds.map(companyId => ({
-                user_id: signUpData.user!.id,
-                company_id: companyId,
-              }))
-            );
-
-          if (companyError) console.error('Error assigning companies:', companyError);
-        }
+      if (response.data?.error) {
+        throw new Error(response.data.error);
       }
 
       toast.success('User created successfully');
