@@ -60,6 +60,7 @@ const menuItems: MenuItem[] = [
     children: [
       { label: 'Profit & Loss', path: '/reports/profit-loss' },
       { label: 'Balance Sheet', path: '/reports/balance-sheet' },
+      { label: 'Trial Balance', path: '/reports/trial-balance' },
       { label: 'General Ledger', path: '/reports/general-ledger' },
       { label: 'Aged Receivables', path: '/reports/aged-receivables' },
       { label: 'Aged Payables', path: '/reports/aged-payables' },
