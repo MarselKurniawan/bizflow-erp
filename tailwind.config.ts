@@ -14,8 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        heading: ['Plus Jakarta Sans', 'sans-serif'],
-        body: ['Inter', 'sans-serif'],
+        sans: ['Rubik', 'sans-serif'],
+        heading: ['Rubik', 'sans-serif'],
+        body: ['Rubik', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",

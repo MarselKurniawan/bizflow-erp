@@ -49,7 +49,7 @@ export const SelectCompany: React.FC = () => {
               <Building2 className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-heading font-bold text-lg">ERP System</h1>
+              <h1 className="font-heading font-bold text-lg">IarPhi</h1>
               <p className="text-xs text-muted-foreground">Select your company</p>
             </div>
           </div>
