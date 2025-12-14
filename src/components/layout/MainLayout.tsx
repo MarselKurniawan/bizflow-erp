@@ -44,12 +44,15 @@ export const MainLayout: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Sidebar />
-      <main className="ml-64 min-h-screen">
-        <div className="p-8">
+      <main className="ml-64 flex-1 flex flex-col">
+        <div className="p-8 flex-1">
           <Outlet />
         </div>
+        <footer className="ml-0 py-4 text-center text-sm text-muted-foreground border-t border-border">
+          © 2023 Marselisius
+        </footer>
       </main>
     </div>
   );
