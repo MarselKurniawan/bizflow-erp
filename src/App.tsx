@@ -24,6 +24,7 @@ import JournalEntries from "./pages/JournalEntries";
 import ProfitLoss from "./pages/reports/ProfitLoss";
 import BalanceSheet from "./pages/reports/BalanceSheet";
 import GeneralLedger from "./pages/reports/GeneralLedger";
+import TrialBalance from "./pages/reports/TrialBalance";
 import AgedReceivables from "./pages/reports/AgedReceivables";
 import AgedPayables from "./pages/reports/AgedPayables";
 import Users from "./pages/settings/Users";
@@ -61,6 +62,7 @@ const App = () => (
                 <Route path="/reports/profit-loss" element={<ProfitLoss />} />
                 <Route path="/reports/balance-sheet" element={<BalanceSheet />} />
                 <Route path="/reports/general-ledger" element={<GeneralLedger />} />
+                <Route path="/reports/trial-balance" element={<TrialBalance />} />
                 <Route path="/reports/aged-receivables" element={<AgedReceivables />} />
                 <Route path="/reports/aged-payables" element={<AgedPayables />} />
                 <Route path="/settings/users" element={<Users />} />
