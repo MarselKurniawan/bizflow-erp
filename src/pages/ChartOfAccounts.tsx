@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Edit2, Trash2, ChevronRight, FolderOpen } from 'lucide-react';
+import { Plus, Search, Filter, Edit2, Trash2, ChevronRight, FolderOpen, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Button } from '@/components/ui/button';
@@ -19,8 +19,71 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+
+const recommendedAccounts = [
+  {
+    category: 'Cash & Bank',
+    type: 'cash_bank',
+    accounts: [
+      { code: '1101', name: 'Kas', description: 'Untuk mencatat uang tunai' },
+      { code: '1102', name: 'Bank BCA', description: 'Rekening bank utama' },
+      { code: '1103', name: 'Bank Mandiri', description: 'Rekening bank tambahan' },
+    ],
+  },
+  {
+    category: 'Asset (Aset)',
+    type: 'asset',
+    accounts: [
+      { code: '1201', name: 'Piutang Usaha', description: 'Tagihan dari pelanggan' },
+      { code: '1301', name: 'Persediaan Barang', description: 'Stok barang dagangan' },
+      { code: '1401', name: 'Peralatan', description: 'Aset tetap perusahaan' },
+    ],
+  },
+  {
+    category: 'Liability (Kewajiban)',
+    type: 'liability',
+    accounts: [
+      { code: '2101', name: 'Hutang Usaha', description: 'Hutang ke supplier' },
+      { code: '2102', name: 'Hutang Pajak', description: 'Kewajiban pajak' },
+      { code: '2201', name: 'Hutang Bank', description: 'Pinjaman dari bank' },
+    ],
+  },
+  {
+    category: 'Equity (Modal)',
+    type: 'equity',
+    accounts: [
+      { code: '3101', name: 'Modal Disetor', description: 'Modal awal pemilik' },
+      { code: '3201', name: 'Laba Ditahan', description: 'Akumulasi laba' },
+    ],
+  },
+  {
+    category: 'Revenue (Pendapatan)',
+    type: 'revenue',
+    accounts: [
+      { code: '4101', name: 'Penjualan', description: 'Pendapatan dari penjualan' },
+      { code: '4102', name: 'Diskon Penjualan', description: 'Potongan penjualan' },
+      { code: '4201', name: 'Pendapatan Lain-lain', description: 'Pendapatan non-operasional' },
+    ],
+  },
+  {
+    category: 'Expense (Beban)',
+    type: 'expense',
+    accounts: [
+      { code: '5101', name: 'Harga Pokok Penjualan', description: 'HPP/COGS' },
+      { code: '5201', name: 'Beban Gaji', description: 'Gaji karyawan' },
+      { code: '5202', name: 'Beban Sewa', description: 'Sewa kantor/gudang' },
+      { code: '5203', name: 'Beban Listrik & Air', description: 'Utilitas bulanan' },
+      { code: '5204', name: 'Beban Transportasi', description: 'Biaya pengiriman' },
+    ],
+  },
+];
 
 interface Account {
   id: string;
@@ -61,6 +124,7 @@ export const ChartOfAccounts: React.FC = () => {
   const [filterType, setFilterType] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [showGuide, setShowGuide] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -183,6 +247,61 @@ export const ChartOfAccounts: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Account Guide Alert */}
+      <Collapsible open={showGuide} onOpenChange={setShowGuide}>
+        <Card className="border-primary/20 bg-primary/5">
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-primary/10 transition-colors py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Info className="w-5 h-5 text-primary" />
+                  <CardTitle className="text-base font-medium text-primary">
+                    Panduan Akun yang Diperlukan
+                  </CardTitle>
+                </div>
+                {showGuide ? (
+                  <ChevronUp className="w-4 h-4 text-primary" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-primary" />
+                )}
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0 pb-4">
+              <p className="text-sm text-muted-foreground mb-4">
+                Berikut adalah daftar akun yang direkomendasikan untuk sistem akuntansi lengkap:
+              </p>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {recommendedAccounts.map((category) => (
+                  <div key={category.category} className="space-y-2">
+                    <h4 className="font-semibold text-sm text-foreground flex items-center gap-2">
+                      <span className={cn('w-2 h-2 rounded-full', 
+                        category.type === 'cash_bank' ? 'bg-primary' :
+                        category.type === 'asset' ? 'bg-blue-500' :
+                        category.type === 'liability' ? 'bg-destructive' :
+                        category.type === 'equity' ? 'bg-purple-500' :
+                        category.type === 'revenue' ? 'bg-green-500' :
+                        'bg-orange-500'
+                      )} />
+                      {category.category}
+                    </h4>
+                    <ul className="space-y-1">
+                      {category.accounts.map((acc) => (
+                        <li key={acc.code} className="text-xs text-muted-foreground pl-4">
+                          <span className="font-mono text-foreground/70">{acc.code}</span> - {acc.name}
+                          <span className="block text-muted-foreground/70 text-[10px]">{acc.description}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
