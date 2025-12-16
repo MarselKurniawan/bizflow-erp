@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import { ManualJournalEntryForm } from '@/components/journal/ManualJournalEntryForm';
+import { AccountValidationAlert } from '@/components/accounting/AccountValidationAlert';
 
 interface JournalEntry {
   id: string;
@@ -144,6 +145,8 @@ export const JournalEntries: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <AccountValidationAlert requiredAccountTypes={['cash_bank', 'receivable', 'payable', 'revenue', 'expense']} />
+      
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-heading font-bold text-foreground">Journal Entries</h1>

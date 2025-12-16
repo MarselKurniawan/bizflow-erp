@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { AccountValidationAlert } from '@/components/accounting/AccountValidationAlert';
 
 interface Category {
   id: string;
@@ -235,6 +236,8 @@ export const Products: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <AccountValidationAlert requiredAccountTypes={['revenue', 'expense']} />
+      
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

@@ -25,6 +25,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { formatCurrency, formatDate } from '@/lib/formatters';
+import { AccountValidationAlert } from '@/components/accounting/AccountValidationAlert';
 
 interface Customer {
   id: string;
@@ -314,6 +315,8 @@ export const SalesPayments: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <AccountValidationAlert requiredAccountTypes={['cash_bank', 'receivable']} />
+      
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-heading font-bold text-foreground">Receive Payments</h1>
