@@ -23,6 +23,7 @@ interface AccountBalance {
   total_debit: number;
   total_credit: number;
   balance: number;
+  is_cogs?: boolean;
 }
 
 export const ProfitLoss: React.FC = () => {
@@ -34,6 +35,7 @@ export const ProfitLoss: React.FC = () => {
   });
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [revenueAccounts, setRevenueAccounts] = useState<AccountBalance[]>([]);
+  const [cogsAccounts, setCogsAccounts] = useState<AccountBalance[]>([]);
   const [expenseAccounts, setExpenseAccounts] = useState<AccountBalance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -41,6 +43,15 @@ export const ProfitLoss: React.FC = () => {
     if (!selectedCompany) return;
 
     setIsLoading(true);
+
+    // Get COGS account IDs from products
+    const { data: products } = await supabase
+      .from('products')
+      .select('cogs_account_id')
+      .eq('company_id', selectedCompany.id)
+      .not('cogs_account_id', 'is', null);
+
+    const cogsAccountIds = new Set(products?.map(p => p.cogs_account_id).filter(Boolean) || []);
 
     // Get all journal entry lines within date range
     const { data: entries, error } = await supabase
@@ -84,6 +95,7 @@ export const ProfitLoss: React.FC = () => {
           total_debit: 0,
           total_credit: 0,
           balance: 0,
+          is_cogs: cogsAccountIds.has(entry.account.id),
         });
       }
       
@@ -102,8 +114,15 @@ export const ProfitLoss: React.FC = () => {
     });
 
     const accounts = Array.from(accountMap.values());
+    
+    // Separate COGS from other expenses
+    const expenses = accounts.filter(a => a.account_type === 'expense');
+    const cogs = expenses.filter(a => a.is_cogs || a.name.toLowerCase().includes('cogs') || a.name.toLowerCase().includes('cost of'));
+    const otherExpenses = expenses.filter(a => !a.is_cogs && !a.name.toLowerCase().includes('cogs') && !a.name.toLowerCase().includes('cost of'));
+    
     setRevenueAccounts(accounts.filter(a => a.account_type === 'revenue').sort((a, b) => a.code.localeCompare(b.code)));
-    setExpenseAccounts(accounts.filter(a => a.account_type === 'expense').sort((a, b) => a.code.localeCompare(b.code)));
+    setCogsAccounts(cogs.sort((a, b) => a.code.localeCompare(b.code)));
+    setExpenseAccounts(otherExpenses.sort((a, b) => a.code.localeCompare(b.code)));
     setIsLoading(false);
   };
 
@@ -112,14 +131,21 @@ export const ProfitLoss: React.FC = () => {
   }, [selectedCompany, startDate, endDate]);
 
   const totalRevenue = revenueAccounts.reduce((sum, acc) => sum + acc.balance, 0);
+  const totalCogs = cogsAccounts.reduce((sum, acc) => sum + acc.balance, 0);
+  const grossProfit = totalRevenue - totalCogs;
   const totalExpenses = expenseAccounts.reduce((sum, acc) => sum + acc.balance, 0);
-  const netIncome = totalRevenue - totalExpenses;
+  const netIncome = grossProfit - totalExpenses;
 
   const handleExportCSV = () => {
     const data = [
       ...revenueAccounts.map(a => ({ Type: 'Revenue', Code: a.code, Account: a.name, Amount: a.balance })),
+      { Type: 'Total', Code: '', Account: 'Total Revenue', Amount: totalRevenue },
+      ...cogsAccounts.map(a => ({ Type: 'COGS', Code: a.code, Account: a.name, Amount: a.balance })),
+      { Type: 'Total', Code: '', Account: 'Total COGS', Amount: totalCogs },
+      { Type: 'Summary', Code: '', Account: 'Gross Profit', Amount: grossProfit },
       ...expenseAccounts.map(a => ({ Type: 'Expense', Code: a.code, Account: a.name, Amount: a.balance })),
-      { Type: 'Total', Code: '', Account: 'Net Income', Amount: netIncome }
+      { Type: 'Total', Code: '', Account: 'Total Expenses', Amount: totalExpenses },
+      { Type: 'Summary', Code: '', Account: 'Net Income', Amount: netIncome }
     ];
     exportToCSV(data, `profit-loss-${startDate}-to-${endDate}`);
     toast.success('Exported to CSV');
@@ -128,8 +154,13 @@ export const ProfitLoss: React.FC = () => {
   const handleExportExcel = () => {
     const data = [
       ...revenueAccounts.map(a => ({ Type: 'Revenue', Code: a.code, Account: a.name, Amount: a.balance })),
+      { Type: 'Total', Code: '', Account: 'Total Revenue', Amount: totalRevenue },
+      ...cogsAccounts.map(a => ({ Type: 'COGS', Code: a.code, Account: a.name, Amount: a.balance })),
+      { Type: 'Total', Code: '', Account: 'Total COGS', Amount: totalCogs },
+      { Type: 'Summary', Code: '', Account: 'Gross Profit', Amount: grossProfit },
       ...expenseAccounts.map(a => ({ Type: 'Expense', Code: a.code, Account: a.name, Amount: a.balance })),
-      { Type: 'Total', Code: '', Account: 'Net Income', Amount: netIncome }
+      { Type: 'Total', Code: '', Account: 'Total Expenses', Amount: totalExpenses },
+      { Type: 'Summary', Code: '', Account: 'Net Income', Amount: netIncome }
     ];
     exportToExcel(data, `profit-loss-${startDate}-to-${endDate}`, 'Profit & Loss');
     toast.success('Exported to Excel');
@@ -137,13 +168,17 @@ export const ProfitLoss: React.FC = () => {
 
   const handleExportPDF = () => {
     const revenueRows = revenueAccounts.map(a => [a.code, a.name, formatCurrency(a.balance)]);
+    const cogsRows = cogsAccounts.map(a => [a.code, a.name, formatCurrency(a.balance)]);
     const expenseRows = expenseAccounts.map(a => [a.code, a.name, formatCurrency(a.balance)]);
     
     const html = `
       <h2>Period: ${startDate} to ${endDate}</h2>
       <h3>Revenue</h3>
       ${generatePDFTable(['Code', 'Account', 'Amount'], revenueRows, { totalRow: ['', 'Total Revenue', formatCurrency(totalRevenue)] })}
-      <h3>Expenses</h3>
+      <h3>Cost of Goods Sold</h3>
+      ${generatePDFTable(['Code', 'Account', 'Amount'], cogsRows, { totalRow: ['', 'Total COGS', formatCurrency(totalCogs)] })}
+      <h3 style="background: #f0f0f0; padding: 8px;">Gross Profit: ${formatCurrency(grossProfit)}</h3>
+      <h3>Operating Expenses</h3>
       ${generatePDFTable(['Code', 'Account', 'Amount'], expenseRows, { totalRow: ['', 'Total Expenses', formatCurrency(totalExpenses)] })}
       <h3>Net ${netIncome >= 0 ? 'Profit' : 'Loss'}: ${formatCurrency(netIncome)}</h3>
     `;
@@ -209,47 +244,34 @@ export const ProfitLoss: React.FC = () => {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Revenue</p>
-                <p className="text-2xl font-bold text-success">{formatCurrency(totalRevenue)}</p>
-              </div>
-              <TrendingUp className="w-10 h-10 text-success/20" />
-            </div>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Revenue</p>
+            <p className="text-xl font-bold text-success">{formatCurrency(totalRevenue)}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Expenses</p>
-                <p className="text-2xl font-bold text-destructive">{formatCurrency(totalExpenses)}</p>
-              </div>
-              <TrendingDown className="w-10 h-10 text-destructive/20" />
-            </div>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">COGS</p>
+            <p className="text-xl font-bold text-orange-500">{formatCurrency(totalCogs)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Gross Profit</p>
+            <p className={cn("text-xl font-bold", grossProfit >= 0 ? "text-success" : "text-destructive")}>
+              {formatCurrency(grossProfit)}
+            </p>
           </CardContent>
         </Card>
         <Card className={cn(netIncome >= 0 ? 'border-success/30' : 'border-destructive/30')}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Net {netIncome >= 0 ? 'Profit' : 'Loss'}</p>
-                <p className={cn(
-                  'text-2xl font-bold',
-                  netIncome >= 0 ? 'text-success' : 'text-destructive'
-                )}>
-                  {formatCurrency(Math.abs(netIncome))}
-                </p>
-              </div>
-              {netIncome >= 0 ? (
-                <TrendingUp className="w-10 h-10 text-success/20" />
-              ) : (
-                <TrendingDown className="w-10 h-10 text-destructive/20" />
-              )}
-            </div>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Net {netIncome >= 0 ? 'Profit' : 'Loss'}</p>
+            <p className={cn("text-xl font-bold", netIncome >= 0 ? "text-success" : "text-destructive")}>
+              {formatCurrency(Math.abs(netIncome))}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -257,111 +279,109 @@ export const ProfitLoss: React.FC = () => {
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground">Loading report...</div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg text-success">Revenue</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <table className="data-table">
-                <thead>
+        <Card>
+          <CardContent className="p-0">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Account</th>
+                  <th className="text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* Revenue Section */}
+                <tr className="bg-success/10">
+                  <td colSpan={3} className="font-bold text-success">REVENUE</td>
+                </tr>
+                {revenueAccounts.length === 0 ? (
                   <tr>
-                    <th>Code</th>
-                    <th>Account</th>
-                    <th className="text-right">Amount</th>
+                    <td colSpan={3} className="text-center text-muted-foreground py-4">
+                      No revenue recorded
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {revenueAccounts.length === 0 ? (
-                    <tr>
-                      <td colSpan={3} className="text-center text-muted-foreground py-8">
-                        No revenue recorded for this period
-                      </td>
+                ) : (
+                  revenueAccounts.map((acc) => (
+                    <tr key={acc.code}>
+                      <td className="font-mono pl-6">{acc.code}</td>
+                      <td>{acc.name}</td>
+                      <td className="text-right font-medium">{formatCurrency(acc.balance)}</td>
                     </tr>
-                  ) : (
-                    <>
-                      {revenueAccounts.map((acc) => (
-                        <tr key={acc.code}>
-                          <td className="font-mono">{acc.code}</td>
-                          <td>{acc.name}</td>
-                          <td className="text-right font-medium text-success">
-                            {formatCurrency(acc.balance)}
-                          </td>
-                        </tr>
-                      ))}
-                      <tr className="bg-muted/50 font-semibold">
-                        <td colSpan={2}>Total Revenue</td>
-                        <td className="text-right text-success">{formatCurrency(totalRevenue)}</td>
-                      </tr>
-                    </>
-                  )}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
+                  ))
+                )}
+                <tr className="bg-muted/30 font-semibold">
+                  <td colSpan={2}>Total Revenue</td>
+                  <td className="text-right text-success">{formatCurrency(totalRevenue)}</td>
+                </tr>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg text-destructive">Expenses</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <table className="data-table">
-                <thead>
+                {/* COGS Section */}
+                <tr className="bg-orange-500/10">
+                  <td colSpan={3} className="font-bold text-orange-600">COST OF GOODS SOLD (COGS)</td>
+                </tr>
+                {cogsAccounts.length === 0 ? (
                   <tr>
-                    <th>Code</th>
-                    <th>Account</th>
-                    <th className="text-right">Amount</th>
+                    <td colSpan={3} className="text-center text-muted-foreground py-4">
+                      No COGS recorded
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {expenseAccounts.length === 0 ? (
-                    <tr>
-                      <td colSpan={3} className="text-center text-muted-foreground py-8">
-                        No expenses recorded for this period
-                      </td>
+                ) : (
+                  cogsAccounts.map((acc) => (
+                    <tr key={acc.code}>
+                      <td className="font-mono pl-6">{acc.code}</td>
+                      <td>{acc.name}</td>
+                      <td className="text-right font-medium">{formatCurrency(acc.balance)}</td>
                     </tr>
-                  ) : (
-                    <>
-                      {expenseAccounts.map((acc) => (
-                        <tr key={acc.code}>
-                          <td className="font-mono">{acc.code}</td>
-                          <td>{acc.name}</td>
-                          <td className="text-right font-medium text-destructive">
-                            {formatCurrency(acc.balance)}
-                          </td>
-                        </tr>
-                      ))}
-                      <tr className="bg-muted/50 font-semibold">
-                        <td colSpan={2}>Total Expenses</td>
-                        <td className="text-right text-destructive">{formatCurrency(totalExpenses)}</td>
-                      </tr>
-                    </>
-                  )}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
-        </div>
+                  ))
+                )}
+                <tr className="bg-muted/30 font-semibold">
+                  <td colSpan={2}>Total COGS</td>
+                  <td className="text-right text-orange-600">{formatCurrency(totalCogs)}</td>
+                </tr>
+
+                {/* Gross Profit */}
+                <tr className="bg-primary/10 font-bold text-lg">
+                  <td colSpan={2}>GROSS PROFIT</td>
+                  <td className={cn("text-right", grossProfit >= 0 ? "text-success" : "text-destructive")}>
+                    {formatCurrency(grossProfit)}
+                  </td>
+                </tr>
+
+                {/* Operating Expenses Section */}
+                <tr className="bg-destructive/10">
+                  <td colSpan={3} className="font-bold text-destructive">OPERATING EXPENSES</td>
+                </tr>
+                {expenseAccounts.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="text-center text-muted-foreground py-4">
+                      No expenses recorded
+                    </td>
+                  </tr>
+                ) : (
+                  expenseAccounts.map((acc) => (
+                    <tr key={acc.code}>
+                      <td className="font-mono pl-6">{acc.code}</td>
+                      <td>{acc.name}</td>
+                      <td className="text-right font-medium">{formatCurrency(acc.balance)}</td>
+                    </tr>
+                  ))
+                )}
+                <tr className="bg-muted/30 font-semibold">
+                  <td colSpan={2}>Total Operating Expenses</td>
+                  <td className="text-right text-destructive">{formatCurrency(totalExpenses)}</td>
+                </tr>
+
+                {/* Net Income */}
+                <tr className={cn("font-bold text-lg", netIncome >= 0 ? "bg-success/20" : "bg-destructive/20")}>
+                  <td colSpan={2}>NET {netIncome >= 0 ? 'PROFIT' : 'LOSS'}</td>
+                  <td className={cn("text-right", netIncome >= 0 ? "text-success" : "text-destructive")}>
+                    {formatCurrency(netIncome)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
       )}
-
-      <Card className={cn(netIncome >= 0 ? 'bg-success/5' : 'bg-destructive/5')}>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold">Net {netIncome >= 0 ? 'Profit' : 'Loss'}</h3>
-              <p className="text-sm text-muted-foreground">
-                Revenue ({formatCurrency(totalRevenue)}) - Expenses ({formatCurrency(totalExpenses)})
-              </p>
-            </div>
-            <p className={cn(
-              'text-3xl font-bold',
-              netIncome >= 0 ? 'text-success' : 'text-destructive'
-            )}>
-              {formatCurrency(netIncome)}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };
