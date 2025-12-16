@@ -25,6 +25,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { formatCurrency, formatDate, getStatusBadgeClass } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import { AccountValidationAlert } from '@/components/accounting/AccountValidationAlert';
 
 interface Customer {
   id: string;
@@ -345,7 +346,29 @@ export const SalesOrders: React.FC = () => {
     if (journalError) {
       console.error('Journal entry error:', journalError);
     } else {
-      // Get receivable and revenue accounts
+      // Get order items to calculate discount amounts
+      const { data: orderItems } = await supabase
+        .from('sales_order_items')
+        .select('quantity, unit_price, discount_percent, tax_percent')
+        .eq('sales_order_id', order.id);
+
+      // Calculate totals
+      let grossRevenue = 0;
+      let totalDiscount = 0;
+      let totalTax = 0;
+
+      (orderItems || []).forEach((item: any) => {
+        const lineSubtotal = item.quantity * item.unit_price;
+        const lineDiscount = lineSubtotal * (item.discount_percent / 100);
+        const afterDiscount = lineSubtotal - lineDiscount;
+        const lineTax = afterDiscount * (item.tax_percent / 100);
+        
+        grossRevenue += lineSubtotal;
+        totalDiscount += lineDiscount;
+        totalTax += lineTax;
+      });
+
+      // Get required accounts
       const { data: receivableAccount } = await supabase
         .from('chart_of_accounts')
         .select('id')
@@ -363,23 +386,72 @@ export const SalesOrders: React.FC = () => {
         .limit(1)
         .single();
 
-      if (receivableAccount && revenueAccount) {
-        await supabase.from('journal_entry_lines').insert([
-          {
-            journal_entry_id: journalEntry.id,
-            account_id: receivableAccount.id,
-            debit_amount: order.total_amount,
-            credit_amount: 0,
-            description: 'Accounts Receivable',
-          },
-          {
-            journal_entry_id: journalEntry.id,
-            account_id: revenueAccount.id,
-            debit_amount: 0,
-            credit_amount: order.total_amount,
-            description: 'Sales Revenue',
-          },
-        ]);
+      const { data: taxAccount } = await supabase
+        .from('chart_of_accounts')
+        .select('id')
+        .eq('company_id', selectedCompany.id)
+        .or('name.ilike.%tax%,name.ilike.%pajak%,name.ilike.%ppn%,name.ilike.%pph%')
+        .limit(1)
+        .single();
+
+      const { data: discountAccount } = await supabase
+        .from('chart_of_accounts')
+        .select('id')
+        .eq('company_id', selectedCompany.id)
+        .or('name.ilike.%discount%,name.ilike.%diskon%,name.ilike.%potongan%')
+        .limit(1)
+        .single();
+
+      const journalLines = [];
+
+      // Debit: Accounts Receivable (net amount customer pays)
+      if (receivableAccount) {
+        journalLines.push({
+          journal_entry_id: journalEntry.id,
+          account_id: receivableAccount.id,
+          debit_amount: order.total_amount,
+          credit_amount: 0,
+          description: 'Piutang Usaha',
+        });
+      }
+
+      // Debit: Tax Receivable (if tax exists - e.g., PPh 23 withheld)
+      // Note: For withholding tax, the customer pays less but we still recognize revenue
+      // If it's VAT/PPN collected, it would be a credit to liability
+      if (taxAccount && totalTax > 0) {
+        journalLines.push({
+          journal_entry_id: journalEntry.id,
+          account_id: taxAccount.id,
+          debit_amount: totalTax,
+          credit_amount: 0,
+          description: 'Pajak (PPh/PPN)',
+        });
+      }
+
+      // Debit: Sales Discount (contra-revenue)
+      if (discountAccount && totalDiscount > 0) {
+        journalLines.push({
+          journal_entry_id: journalEntry.id,
+          account_id: discountAccount.id,
+          debit_amount: totalDiscount,
+          credit_amount: 0,
+          description: 'Potongan Penjualan',
+        });
+      }
+
+      // Credit: Sales Revenue (gross revenue)
+      if (revenueAccount) {
+        journalLines.push({
+          journal_entry_id: journalEntry.id,
+          account_id: revenueAccount.id,
+          debit_amount: 0,
+          credit_amount: grossRevenue + totalTax, // Gross revenue including tax
+          description: 'Pendapatan Penjualan',
+        });
+      }
+
+      if (journalLines.length > 0) {
+        await supabase.from('journal_entry_lines').insert(journalLines);
       }
     }
 
@@ -414,6 +486,8 @@ export const SalesOrders: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <AccountValidationAlert requiredAccountTypes={['receivable', 'revenue', 'tax', 'discount']} />
+      
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-heading font-bold text-foreground">Sales Orders</h1>

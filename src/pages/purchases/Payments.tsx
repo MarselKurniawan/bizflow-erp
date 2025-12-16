@@ -27,6 +27,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import { AccountValidationAlert } from '@/components/accounting/AccountValidationAlert';
 
 interface Bill {
   id: string;
@@ -315,6 +316,8 @@ export const PurchasePayments: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <AccountValidationAlert requiredAccountTypes={['cash_bank', 'payable']} />
+      
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-heading font-bold text-foreground">Make Payments</h1>
