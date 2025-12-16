@@ -32,6 +32,8 @@ interface EquityBreakdown {
   revenue: number;
   expenses: number;
   netIncome: number;
+  revenueAccounts: AccountBalance[];
+  expenseAccounts: AccountBalance[];
 }
 
 export const BalanceSheet: React.FC = () => {
@@ -42,7 +44,9 @@ export const BalanceSheet: React.FC = () => {
   const [liabilities, setLiabilities] = useState<AccountBalance[]>([]);
   const [equityAccounts, setEquityAccounts] = useState<AccountBalance[]>([]);
   const [retainedEarnings, setRetainedEarnings] = useState(0);
-  const [equityBreakdown, setEquityBreakdown] = useState<EquityBreakdown>({ revenue: 0, expenses: 0, netIncome: 0 });
+  const [equityBreakdown, setEquityBreakdown] = useState<EquityBreakdown>({ 
+    revenue: 0, expenses: 0, netIncome: 0, revenueAccounts: [], expenseAccounts: [] 
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [showEquityDetail, setShowEquityDetail] = useState(false);
 
@@ -111,16 +115,20 @@ export const BalanceSheet: React.FC = () => {
     // Calculate retained earnings from revenue and expense accounts
     // Revenue: credit increases (positive balance)
     // Expense: debit increases (positive balance after fix)
-    const revenueTotal = accounts
-      .filter(a => a.account_type === 'revenue')
-      .reduce((sum, acc) => sum + acc.balance, 0);
-    const expenseTotal = accounts
-      .filter(a => a.account_type === 'expense')
-      .reduce((sum, acc) => sum + acc.balance, 0);
+    const revenueAccs = accounts.filter(a => a.account_type === 'revenue').sort((a, b) => a.code.localeCompare(b.code));
+    const expenseAccs = accounts.filter(a => a.account_type === 'expense').sort((a, b) => a.code.localeCompare(b.code));
+    const revenueTotal = revenueAccs.reduce((sum, acc) => sum + acc.balance, 0);
+    const expenseTotal = expenseAccs.reduce((sum, acc) => sum + acc.balance, 0);
     const netIncome = revenueTotal - expenseTotal;
     
     setRetainedEarnings(netIncome);
-    setEquityBreakdown({ revenue: revenueTotal, expenses: expenseTotal, netIncome });
+    setEquityBreakdown({ 
+      revenue: revenueTotal, 
+      expenses: expenseTotal, 
+      netIncome, 
+      revenueAccounts: revenueAccs, 
+      expenseAccounts: expenseAccs 
+    });
     setAssets(accounts.filter(a => a.account_type === 'asset').sort((a, b) => a.code.localeCompare(b.code)));
     setCashBankAccounts(accounts.filter(a => a.account_type === 'cash_bank').sort((a, b) => a.code.localeCompare(b.code)));
     setLiabilities(accounts.filter(a => a.account_type === 'liability').sort((a, b) => a.code.localeCompare(b.code)));
@@ -386,16 +394,43 @@ export const BalanceSheet: React.FC = () => {
                           <span className="italic">Retained Earnings (Net Income)</span>
                           {showEquityDetail ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </CollapsibleTrigger>
-                        <CollapsibleContent className="pl-4 pt-2 space-y-1 text-sm text-muted-foreground">
-                          <div className="flex justify-between">
+                        <CollapsibleContent className="pl-4 pt-2 space-y-2 text-sm">
+                          {/* Revenue Accounts */}
+                          <div className="text-muted-foreground font-medium">Revenue:</div>
+                          {equityBreakdown.revenueAccounts.length > 0 ? (
+                            equityBreakdown.revenueAccounts.map((acc) => (
+                              <div key={acc.code} className="flex justify-between pl-2 text-muted-foreground">
+                                <span className="truncate">{acc.code} - {acc.name}</span>
+                                <span className="text-success ml-2">{formatCurrency(acc.balance)}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="pl-2 text-muted-foreground italic">No revenue</div>
+                          )}
+                          <div className="flex justify-between font-medium border-t pt-1">
                             <span>Total Revenue:</span>
                             <span className="text-success">{formatCurrency(equityBreakdown.revenue)}</span>
                           </div>
-                          <div className="flex justify-between">
+                          
+                          {/* Expense Accounts */}
+                          <div className="text-muted-foreground font-medium mt-2">Expenses:</div>
+                          {equityBreakdown.expenseAccounts.length > 0 ? (
+                            equityBreakdown.expenseAccounts.map((acc) => (
+                              <div key={acc.code} className="flex justify-between pl-2 text-muted-foreground">
+                                <span className="truncate">{acc.code} - {acc.name}</span>
+                                <span className="text-destructive ml-2">({formatCurrency(acc.balance)})</span>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="pl-2 text-muted-foreground italic">No expenses</div>
+                          )}
+                          <div className="flex justify-between font-medium border-t pt-1">
                             <span>Total Expenses:</span>
                             <span className="text-destructive">({formatCurrency(equityBreakdown.expenses)})</span>
                           </div>
-                          <div className="flex justify-between font-medium border-t pt-1">
+                          
+                          {/* Net Income */}
+                          <div className="flex justify-between font-bold border-t-2 pt-2 mt-2">
                             <span>Net Income:</span>
                             <span className={equityBreakdown.netIncome >= 0 ? 'text-success' : 'text-destructive'}>
                               {formatCurrency(equityBreakdown.netIncome)}

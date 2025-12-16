@@ -249,24 +249,22 @@ export const ProfitLoss: React.FC = () => {
         <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Revenue</p>
-            <p className="text-xl font-bold text-success">{formatCurrency(totalRevenue)}</p>
+            <p className="text-xl font-bold">{formatCurrency(totalRevenue)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">COGS</p>
-            <p className="text-xl font-bold text-orange-500">{formatCurrency(totalCogs)}</p>
+            <p className="text-xl font-bold">{formatCurrency(totalCogs)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Gross Profit</p>
-            <p className={cn("text-xl font-bold", grossProfit >= 0 ? "text-success" : "text-destructive")}>
-              {formatCurrency(grossProfit)}
-            </p>
+            <p className="text-xl font-bold">{formatCurrency(grossProfit)}</p>
           </CardContent>
         </Card>
-        <Card className={cn(netIncome >= 0 ? 'border-success/30' : 'border-destructive/30')}>
+        <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Net {netIncome >= 0 ? 'Profit' : 'Loss'}</p>
             <p className={cn("text-xl font-bold", netIncome >= 0 ? "text-success" : "text-destructive")}>
@@ -291,8 +289,8 @@ export const ProfitLoss: React.FC = () => {
               </thead>
               <tbody>
                 {/* Revenue Section */}
-                <tr className="bg-success/10">
-                  <td colSpan={3} className="font-bold text-success">REVENUE</td>
+                <tr className="bg-muted/50">
+                  <td colSpan={3} className="font-bold">REVENUE</td>
                 </tr>
                 {revenueAccounts.length === 0 ? (
                   <tr>
@@ -309,14 +307,14 @@ export const ProfitLoss: React.FC = () => {
                     </tr>
                   ))
                 )}
-                <tr className="bg-muted/30 font-semibold">
-                  <td colSpan={2}>Total Revenue</td>
-                  <td className="text-right text-success">{formatCurrency(totalRevenue)}</td>
+                <tr className="font-semibold border-t">
+                  <td colSpan={2} className="pl-4">Total Revenue</td>
+                  <td className="text-right">{formatCurrency(totalRevenue)}</td>
                 </tr>
 
                 {/* COGS Section */}
-                <tr className="bg-orange-500/10">
-                  <td colSpan={3} className="font-bold text-orange-600">COST OF GOODS SOLD (COGS)</td>
+                <tr className="bg-muted/50">
+                  <td colSpan={3} className="font-bold">COST OF GOODS SOLD (COGS)</td>
                 </tr>
                 {cogsAccounts.length === 0 ? (
                   <tr>
@@ -333,22 +331,20 @@ export const ProfitLoss: React.FC = () => {
                     </tr>
                   ))
                 )}
-                <tr className="bg-muted/30 font-semibold">
-                  <td colSpan={2}>Total COGS</td>
-                  <td className="text-right text-orange-600">{formatCurrency(totalCogs)}</td>
+                <tr className="font-semibold border-t">
+                  <td colSpan={2} className="pl-4">Total COGS</td>
+                  <td className="text-right">{formatCurrency(totalCogs)}</td>
                 </tr>
 
                 {/* Gross Profit */}
-                <tr className="bg-primary/10 font-bold text-lg">
+                <tr className="bg-muted font-bold">
                   <td colSpan={2}>GROSS PROFIT</td>
-                  <td className={cn("text-right", grossProfit >= 0 ? "text-success" : "text-destructive")}>
-                    {formatCurrency(grossProfit)}
-                  </td>
+                  <td className="text-right">{formatCurrency(grossProfit)}</td>
                 </tr>
 
                 {/* Operating Expenses Section */}
-                <tr className="bg-destructive/10">
-                  <td colSpan={3} className="font-bold text-destructive">OPERATING EXPENSES</td>
+                <tr className="bg-muted/50">
+                  <td colSpan={3} className="font-bold">OPERATING EXPENSES</td>
                 </tr>
                 {expenseAccounts.length === 0 ? (
                   <tr>
@@ -365,13 +361,13 @@ export const ProfitLoss: React.FC = () => {
                     </tr>
                   ))
                 )}
-                <tr className="bg-muted/30 font-semibold">
-                  <td colSpan={2}>Total Operating Expenses</td>
-                  <td className="text-right text-destructive">{formatCurrency(totalExpenses)}</td>
+                <tr className="font-semibold border-t">
+                  <td colSpan={2} className="pl-4">Total Operating Expenses</td>
+                  <td className="text-right">{formatCurrency(totalExpenses)}</td>
                 </tr>
 
                 {/* Net Income */}
-                <tr className={cn("font-bold text-lg", netIncome >= 0 ? "bg-success/20" : "bg-destructive/20")}>
+                <tr className="bg-muted font-bold text-lg">
                   <td colSpan={2}>NET {netIncome >= 0 ? 'PROFIT' : 'LOSS'}</td>
                   <td className={cn("text-right", netIncome >= 0 ? "text-success" : "text-destructive")}>
                     {formatCurrency(netIncome)}
