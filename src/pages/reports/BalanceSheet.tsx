@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Wallet, Scale, Download, FileSpreadsheet } from 'lucide-react';
+import { Building2, Wallet, Scale, Download, FileSpreadsheet, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
@@ -23,6 +28,12 @@ interface AccountBalance {
   balance: number;
 }
 
+interface EquityBreakdown {
+  revenue: number;
+  expenses: number;
+  netIncome: number;
+}
+
 export const BalanceSheet: React.FC = () => {
   const { selectedCompany } = useCompany();
   const [asOfDate, setAsOfDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -31,7 +42,10 @@ export const BalanceSheet: React.FC = () => {
   const [liabilities, setLiabilities] = useState<AccountBalance[]>([]);
   const [equityAccounts, setEquityAccounts] = useState<AccountBalance[]>([]);
   const [retainedEarnings, setRetainedEarnings] = useState(0);
+  const [equityBreakdown, setEquityBreakdown] = useState<EquityBreakdown>({ revenue: 0, expenses: 0, netIncome: 0 });
   const [isLoading, setIsLoading] = useState(true);
+  const [showEquityDetail, setShowEquityDetail] = useState(false);
+
   const fetchData = async () => {
     if (!selectedCompany) return;
 
@@ -83,9 +97,9 @@ export const BalanceSheet: React.FC = () => {
       const debit = entry.debit_amount || 0;
       const credit = entry.credit_amount || 0;
       
-      // Assets and Cash/Bank: debit increases, credit decreases
-      // Liabilities and Equity: credit increases, debit decreases
-      if (acc.account_type === 'asset' || acc.account_type === 'cash_bank') {
+      // Assets, Cash/Bank, and Expenses: debit increases, credit decreases
+      // Liabilities, Equity, and Revenue: credit increases, debit decreases
+      if (acc.account_type === 'asset' || acc.account_type === 'cash_bank' || acc.account_type === 'expense') {
         acc.balance += debit - credit;
       } else {
         acc.balance += credit - debit;
@@ -95,7 +109,8 @@ export const BalanceSheet: React.FC = () => {
     const accounts = Array.from(accountMap.values());
     
     // Calculate retained earnings from revenue and expense accounts
-    // Revenue: credit increases (positive), Expense: debit increases (negative for equity)
+    // Revenue: credit increases (positive balance)
+    // Expense: debit increases (positive balance after fix)
     const revenueTotal = accounts
       .filter(a => a.account_type === 'revenue')
       .reduce((sum, acc) => sum + acc.balance, 0);
@@ -105,6 +120,7 @@ export const BalanceSheet: React.FC = () => {
     const netIncome = revenueTotal - expenseTotal;
     
     setRetainedEarnings(netIncome);
+    setEquityBreakdown({ revenue: revenueTotal, expenses: expenseTotal, netIncome });
     setAssets(accounts.filter(a => a.account_type === 'asset').sort((a, b) => a.code.localeCompare(b.code)));
     setCashBankAccounts(accounts.filter(a => a.account_type === 'cash_bank').sort((a, b) => a.code.localeCompare(b.code)));
     setLiabilities(accounts.filter(a => a.account_type === 'liability').sort((a, b) => a.code.localeCompare(b.code)));
@@ -128,6 +144,7 @@ export const BalanceSheet: React.FC = () => {
       ...assets.map(a => ({ Category: 'Assets', Code: a.code, Account: a.name, Balance: a.balance })),
       ...liabilities.map(a => ({ Category: 'Liabilities', Code: a.code, Account: a.name, Balance: a.balance })),
       ...equityAccounts.map(a => ({ Category: 'Equity', Code: a.code, Account: a.name, Balance: a.balance })),
+      { Category: 'Equity', Code: 'RE', Account: 'Retained Earnings', Balance: retainedEarnings },
     ];
     exportToCSV(data, `balance-sheet-${asOfDate}`);
     toast.success('Exported to CSV');
@@ -139,6 +156,7 @@ export const BalanceSheet: React.FC = () => {
       ...assets.map(a => ({ Category: 'Assets', Code: a.code, Account: a.name, Balance: a.balance })),
       ...liabilities.map(a => ({ Category: 'Liabilities', Code: a.code, Account: a.name, Balance: a.balance })),
       ...equityAccounts.map(a => ({ Category: 'Equity', Code: a.code, Account: a.name, Balance: a.balance })),
+      { Category: 'Equity', Code: 'RE', Account: 'Retained Earnings', Balance: retainedEarnings },
     ];
     exportToExcel(data, `balance-sheet-${asOfDate}`, 'Balance Sheet');
     toast.success('Exported to Excel');
@@ -147,7 +165,10 @@ export const BalanceSheet: React.FC = () => {
   const handleExportPDF = () => {
     const assetRows = [...cashBankAccounts, ...assets].map(a => [a.code, a.name, formatCurrency(a.balance)]);
     const liabilityRows = liabilities.map(a => [a.code, a.name, formatCurrency(a.balance)]);
-    const equityRows = equityAccounts.map(a => [a.code, a.name, formatCurrency(a.balance)]);
+    const equityRows = [
+      ...equityAccounts.map(a => [a.code, a.name, formatCurrency(a.balance)]),
+      ['RE', 'Retained Earnings', formatCurrency(retainedEarnings)],
+    ];
     
     const html = `
       <h2>As of: ${asOfDate}</h2>
@@ -359,7 +380,30 @@ export const BalanceSheet: React.FC = () => {
                   {/* Retained Earnings - Always show as it's calculated from Revenue - Expenses */}
                   <tr className="bg-muted/10">
                     <td className="font-mono pl-6 text-muted-foreground">RE</td>
-                    <td className="italic">Retained Earnings (Net Income)</td>
+                    <td>
+                      <Collapsible open={showEquityDetail} onOpenChange={setShowEquityDetail}>
+                        <CollapsibleTrigger className="flex items-center gap-2 hover:text-primary cursor-pointer">
+                          <span className="italic">Retained Earnings (Net Income)</span>
+                          {showEquityDetail ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="pl-4 pt-2 space-y-1 text-sm text-muted-foreground">
+                          <div className="flex justify-between">
+                            <span>Total Revenue:</span>
+                            <span className="text-success">{formatCurrency(equityBreakdown.revenue)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Total Expenses:</span>
+                            <span className="text-destructive">({formatCurrency(equityBreakdown.expenses)})</span>
+                          </div>
+                          <div className="flex justify-between font-medium border-t pt-1">
+                            <span>Net Income:</span>
+                            <span className={equityBreakdown.netIncome >= 0 ? 'text-success' : 'text-destructive'}>
+                              {formatCurrency(equityBreakdown.netIncome)}
+                            </span>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </td>
                     <td className="text-right font-medium">
                       {formatCurrency(retainedEarnings)}
                     </td>

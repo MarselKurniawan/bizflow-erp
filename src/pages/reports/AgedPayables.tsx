@@ -1,24 +1,48 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, AlertTriangle } from 'lucide-react';
+import { Building2, Eye } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
 interface AgedBill {
+  id: string;
+  supplier_id: string;
   supplier_name: string;
   supplier_code: string;
   bill_number: string;
   bill_date: string;
   due_date: string;
   total_amount: number;
+  paid_amount: number;
   outstanding_amount: number;
   days_overdue: number;
   age_bucket: string;
+  notes: string | null;
+  status: string;
+}
+
+interface SupplierAging {
+  supplier_id: string;
+  supplier_name: string;
+  supplier_code: string;
+  bills: AgedBill[];
+  current: number;
+  days_1_30: number;
+  days_31_60: number;
+  days_61_90: number;
+  over_90: number;
+  total: number;
 }
 
 interface AgingSummary {
@@ -32,7 +56,7 @@ interface AgingSummary {
 export const AgedPayables: React.FC = () => {
   const { selectedCompany } = useCompany();
   const [asOfDate, setAsOfDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [bills, setBills] = useState<AgedBill[]>([]);
+  const [supplierAgings, setSupplierAgings] = useState<SupplierAging[]>([]);
   const [summary, setSummary] = useState<AgingSummary>({
     current: 0,
     days_1_30: 0,
@@ -41,6 +65,7 @@ export const AgedPayables: React.FC = () => {
     over_90: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedBill, setSelectedBill] = useState<AgedBill | null>(null);
 
   const fetchData = async () => {
     if (!selectedCompany) return;
@@ -49,7 +74,7 @@ export const AgedPayables: React.FC = () => {
 
     const { data, error } = await supabase
       .from('bills')
-      .select('*, suppliers(code, name)')
+      .select('*, suppliers(id, code, name)')
       .eq('company_id', selectedCompany.id)
       .gt('outstanding_amount', 0)
       .neq('status', 'cancelled')
@@ -71,43 +96,76 @@ export const AgedPayables: React.FC = () => {
       over_90: 0,
     };
 
-    const agedBills: AgedBill[] = (data || []).map((bill: any) => {
+    // Group by supplier
+    const supplierMap = new Map<string, SupplierAging>();
+
+    (data || []).forEach((bill: any) => {
       const dueDate = new Date(bill.due_date);
       const diffTime = asOf.getTime() - dueDate.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       
       let ageBucket = 'Current';
+      let bucketKey: keyof AgingSummary = 'current';
+      
       if (diffDays <= 0) {
         ageBucket = 'Current';
-        newSummary.current += bill.outstanding_amount;
+        bucketKey = 'current';
       } else if (diffDays <= 30) {
         ageBucket = '1-30 Days';
-        newSummary.days_1_30 += bill.outstanding_amount;
+        bucketKey = 'days_1_30';
       } else if (diffDays <= 60) {
         ageBucket = '31-60 Days';
-        newSummary.days_31_60 += bill.outstanding_amount;
+        bucketKey = 'days_31_60';
       } else if (diffDays <= 90) {
         ageBucket = '61-90 Days';
-        newSummary.days_61_90 += bill.outstanding_amount;
+        bucketKey = 'days_61_90';
       } else {
         ageBucket = 'Over 90 Days';
-        newSummary.over_90 += bill.outstanding_amount;
+        bucketKey = 'over_90';
       }
 
-      return {
+      newSummary[bucketKey] += bill.outstanding_amount;
+
+      const supplierId = bill.suppliers?.id || 'unknown';
+      
+      if (!supplierMap.has(supplierId)) {
+        supplierMap.set(supplierId, {
+          supplier_id: supplierId,
+          supplier_name: bill.suppliers?.name || 'Unknown',
+          supplier_code: bill.suppliers?.code || '',
+          bills: [],
+          current: 0,
+          days_1_30: 0,
+          days_31_60: 0,
+          days_61_90: 0,
+          over_90: 0,
+          total: 0,
+        });
+      }
+
+      const supplier = supplierMap.get(supplierId)!;
+      supplier[bucketKey] += bill.outstanding_amount;
+      supplier.total += bill.outstanding_amount;
+      
+      supplier.bills.push({
+        id: bill.id,
+        supplier_id: supplierId,
         supplier_name: bill.suppliers?.name || 'Unknown',
         supplier_code: bill.suppliers?.code || '',
         bill_number: bill.bill_number,
         bill_date: bill.bill_date,
         due_date: bill.due_date,
         total_amount: bill.total_amount,
+        paid_amount: bill.paid_amount || 0,
         outstanding_amount: bill.outstanding_amount,
         days_overdue: Math.max(0, diffDays),
         age_bucket: ageBucket,
-      };
+        notes: bill.notes,
+        status: bill.status,
+      });
     });
 
-    setBills(agedBills);
+    setSupplierAgings(Array.from(supplierMap.values()).sort((a, b) => b.total - a.total));
     setSummary(newSummary);
     setIsLoading(false);
   };
@@ -188,7 +246,7 @@ export const AgedPayables: React.FC = () => {
 
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground">Loading report...</div>
-      ) : bills.length === 0 ? (
+      ) : supplierAgings.length === 0 ? (
         <Card>
           <CardContent className="py-12">
             <div className="text-center">
@@ -206,52 +264,92 @@ export const AgedPayables: React.FC = () => {
                 <thead>
                   <tr>
                     <th>Supplier</th>
-                    <th>Bill #</th>
-                    <th>Bill Date</th>
-                    <th>Due Date</th>
-                    <th className="text-center">Days Overdue</th>
-                    <th>Age Bucket</th>
-                    <th className="text-right">Outstanding</th>
+                    <th>Bill</th>
+                    <th className="text-right">Current</th>
+                    <th className="text-right">1-30 Days</th>
+                    <th className="text-right">31-60 Days</th>
+                    <th className="text-right">61-90 Days</th>
+                    <th className="text-right">Over 90</th>
+                    <th className="text-right">Total</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {bills.map((bill, index) => (
-                    <tr key={index}>
-                      <td>
-                        <div>
-                          <p className="font-medium">{bill.supplier_name}</p>
-                          <p className="text-xs text-muted-foreground">{bill.supplier_code}</p>
-                        </div>
-                      </td>
-                      <td className="font-mono">{bill.bill_number}</td>
-                      <td>{formatDate(bill.bill_date)}</td>
-                      <td>{formatDate(bill.due_date)}</td>
-                      <td className="text-center">
-                        <span className={cn(
-                          'font-medium',
-                          bill.days_overdue === 0 ? 'text-success' :
-                          bill.days_overdue <= 30 ? 'text-warning' : 'text-destructive'
-                        )}>
-                          {bill.days_overdue}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={cn(
-                          'badge-status',
-                          bill.age_bucket === 'Current' ? 'bg-success/10 text-success' :
-                          bill.age_bucket === '1-30 Days' ? 'bg-warning/10 text-warning' :
-                          'bg-destructive/10 text-destructive'
-                        )}>
-                          {bill.age_bucket}
-                        </span>
-                      </td>
-                      <td className="text-right font-medium">{formatCurrency(bill.outstanding_amount)}</td>
-                    </tr>
+                  {supplierAgings.map((supplier) => (
+                    <React.Fragment key={supplier.supplier_id}>
+                      {/* Supplier summary row */}
+                      <tr className="bg-muted/30 font-medium">
+                        <td>
+                          <div>
+                            <p className="font-semibold">{supplier.supplier_name}</p>
+                            <p className="text-xs text-muted-foreground">{supplier.supplier_code}</p>
+                          </div>
+                        </td>
+                        <td className="text-muted-foreground text-sm">
+                          {supplier.bills.length} bill(s)
+                        </td>
+                        <td className="text-right">
+                          {supplier.current > 0 && <span className="text-success">{formatCurrency(supplier.current)}</span>}
+                        </td>
+                        <td className="text-right">
+                          {supplier.days_1_30 > 0 && <span className="text-warning">{formatCurrency(supplier.days_1_30)}</span>}
+                        </td>
+                        <td className="text-right">
+                          {supplier.days_31_60 > 0 && <span className="text-orange-500">{formatCurrency(supplier.days_31_60)}</span>}
+                        </td>
+                        <td className="text-right">
+                          {supplier.days_61_90 > 0 && <span className="text-destructive">{formatCurrency(supplier.days_61_90)}</span>}
+                        </td>
+                        <td className="text-right">
+                          {supplier.over_90 > 0 && <span className="text-destructive">{formatCurrency(supplier.over_90)}</span>}
+                        </td>
+                        <td className="text-right font-bold text-primary">
+                          {formatCurrency(supplier.total)}
+                        </td>
+                      </tr>
+                      {/* Individual bills */}
+                      {supplier.bills.map((bill) => (
+                        <tr key={bill.id} className="hover:bg-muted/10">
+                          <td></td>
+                          <td>
+                            <button
+                              onClick={() => setSelectedBill(bill)}
+                              className="flex items-center gap-2 text-primary hover:underline font-mono text-sm"
+                            >
+                              <Eye className="w-3 h-3" />
+                              {bill.bill_number}
+                            </button>
+                          </td>
+                          <td className="text-right text-sm">
+                            {bill.age_bucket === 'Current' && formatCurrency(bill.outstanding_amount)}
+                          </td>
+                          <td className="text-right text-sm">
+                            {bill.age_bucket === '1-30 Days' && formatCurrency(bill.outstanding_amount)}
+                          </td>
+                          <td className="text-right text-sm">
+                            {bill.age_bucket === '31-60 Days' && formatCurrency(bill.outstanding_amount)}
+                          </td>
+                          <td className="text-right text-sm">
+                            {bill.age_bucket === '61-90 Days' && formatCurrency(bill.outstanding_amount)}
+                          </td>
+                          <td className="text-right text-sm">
+                            {bill.age_bucket === 'Over 90 Days' && formatCurrency(bill.outstanding_amount)}
+                          </td>
+                          <td className="text-right text-sm">
+                            {formatCurrency(bill.outstanding_amount)}
+                          </td>
+                        </tr>
+                      ))}
+                    </React.Fragment>
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="bg-muted/50 font-bold">
-                    <td colSpan={6}>Total Outstanding</td>
+                  <tr className="bg-primary/10 font-bold">
+                    <td colSpan={2}>Grand Total</td>
+                    <td className="text-right text-success">{formatCurrency(summary.current)}</td>
+                    <td className="text-right text-warning">{formatCurrency(summary.days_1_30)}</td>
+                    <td className="text-right text-orange-500">{formatCurrency(summary.days_31_60)}</td>
+                    <td className="text-right text-destructive">{formatCurrency(summary.days_61_90)}</td>
+                    <td className="text-right text-destructive">{formatCurrency(summary.over_90)}</td>
                     <td className="text-right text-primary">{formatCurrency(totalOutstanding)}</td>
                   </tr>
                 </tfoot>
@@ -260,6 +358,91 @@ export const AgedPayables: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Bill Detail Dialog */}
+      <Dialog open={!!selectedBill} onOpenChange={() => setSelectedBill(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Bill Details</DialogTitle>
+          </DialogHeader>
+          {selectedBill && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Bill Number</p>
+                  <p className="font-mono font-medium">{selectedBill.bill_number}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <span className={cn(
+                    'badge-status',
+                    selectedBill.status === 'paid' ? 'bg-success/10 text-success' :
+                    selectedBill.status === 'overdue' ? 'bg-destructive/10 text-destructive' :
+                    'bg-warning/10 text-warning'
+                  )}>
+                    {selectedBill.status}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Supplier</p>
+                  <p className="font-medium">{selectedBill.supplier_name}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Age Bucket</p>
+                  <span className={cn(
+                    'badge-status',
+                    selectedBill.age_bucket === 'Current' ? 'bg-success/10 text-success' :
+                    selectedBill.age_bucket === '1-30 Days' ? 'bg-warning/10 text-warning' :
+                    'bg-destructive/10 text-destructive'
+                  )}>
+                    {selectedBill.age_bucket}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Bill Date</p>
+                  <p className="font-medium">{formatDate(selectedBill.bill_date)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Due Date</p>
+                  <p className="font-medium">{formatDate(selectedBill.due_date)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Days Overdue</p>
+                  <p className={cn(
+                    'font-bold text-lg',
+                    selectedBill.days_overdue === 0 ? 'text-success' :
+                    selectedBill.days_overdue <= 30 ? 'text-warning' : 'text-destructive'
+                  )}>
+                    {selectedBill.days_overdue} days
+                  </p>
+                </div>
+              </div>
+              
+              <div className="border-t pt-4 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Total Amount</span>
+                  <span className="font-medium">{formatCurrency(selectedBill.total_amount)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Paid Amount</span>
+                  <span className="font-medium text-success">{formatCurrency(selectedBill.paid_amount)}</span>
+                </div>
+                <div className="flex justify-between border-t pt-2">
+                  <span className="font-semibold">Outstanding</span>
+                  <span className="font-bold text-destructive">{formatCurrency(selectedBill.outstanding_amount)}</span>
+                </div>
+              </div>
+
+              {selectedBill.notes && (
+                <div className="border-t pt-4">
+                  <p className="text-xs text-muted-foreground mb-1">Notes</p>
+                  <p className="text-sm">{selectedBill.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
