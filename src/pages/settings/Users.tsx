@@ -37,6 +37,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -415,14 +421,34 @@ const Users: React.FC = () => {
                         {user.roles.includes('admin') ? (
                           <Badge variant="secondary">All Companies</Badge>
                         ) : user.companies.length > 0 ? (
-                          user.companies.slice(0, 2).map(c => (
-                            <Badge key={c.id} variant="outline">{c.code}</Badge>
-                          ))
+                          <>
+                            {user.companies.slice(0, 2).map(c => (
+                              <Badge key={c.id} variant="outline">{c.code}</Badge>
+                            ))}
+                            {user.companies.length > 2 && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge variant="outline" className="cursor-pointer">
+                                      +{user.companies.length - 2}
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs">
+                                    <div className="space-y-1">
+                                      <p className="font-semibold text-sm">All Companies:</p>
+                                      {user.companies.map(c => (
+                                        <div key={c.id} className="text-sm">
+                                          {c.code} - {c.name}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </>
                         ) : (
                           <Badge variant="destructive" className="text-xs">Not Assigned</Badge>
-                        )}
-                        {!user.roles.includes('admin') && user.companies.length > 2 && (
-                          <Badge variant="outline">+{user.companies.length - 2}</Badge>
                         )}
                       </div>
                     </TableCell>
