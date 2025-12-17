@@ -72,12 +72,14 @@ export const AgedPayables: React.FC = () => {
 
     setIsLoading(true);
 
+    // Filter bills created on or before the as of date
     const { data, error } = await supabase
       .from('bills')
       .select('*, suppliers(id, code, name)')
       .eq('company_id', selectedCompany.id)
       .gt('outstanding_amount', 0)
       .neq('status', 'cancelled')
+      .lte('bill_date', asOfDate)
       .order('due_date');
 
     if (error) {
