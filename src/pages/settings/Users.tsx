@@ -29,11 +29,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -417,25 +417,31 @@ const Users: React.FC = () => {
                               <Badge key={c.id} variant="outline">{c.code}</Badge>
                             ))}
                             {user.companies.length > 2 && (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Badge variant="outline" className="cursor-pointer">
-                                      +{user.companies.length - 2}
-                                    </Badge>
-                                  </TooltipTrigger>
-                                  <TooltipContent className="max-w-xs">
-                                    <div className="space-y-1">
-                                      <p className="font-semibold text-sm">All Companies:</p>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Badge variant="outline" className="cursor-pointer hover:bg-muted">
+                                    +{user.companies.length - 2}
+                                  </Badge>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-64 p-0" align="start">
+                                  <div className="p-3 border-b">
+                                    <p className="font-semibold text-sm flex items-center gap-2">
+                                      <Building2 className="w-4 h-4" />
+                                      All Companies ({user.companies.length})
+                                    </p>
+                                  </div>
+                                  <ScrollArea className="max-h-60">
+                                    <div className="p-2 space-y-1">
                                       {user.companies.map(c => (
-                                        <div key={c.id} className="text-sm">
-                                          {c.code} - {c.name}
+                                        <div key={c.id} className="text-sm p-2 rounded hover:bg-muted">
+                                          <span className="font-mono font-medium">{c.code}</span>
+                                          <span className="text-muted-foreground ml-2">- {c.name}</span>
                                         </div>
                                       ))}
                                     </div>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
+                                  </ScrollArea>
+                                </PopoverContent>
+                              </Popover>
                             )}
                           </>
                         ) : (
