@@ -11,13 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { toast } from 'sonner';
 import { formatCurrency, formatDate, getStatusBadgeClass } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
@@ -235,20 +229,22 @@ export const Bills: React.FC = () => {
             className="pl-10 input-field"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-48 input-field">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="sent">Pending</SelectItem>
-            <SelectItem value="partial">Partial</SelectItem>
-            <SelectItem value="paid">Paid</SelectItem>
-            <SelectItem value="overdue">Overdue</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="w-full sm:w-48">
+          <SearchableSelect
+            options={[
+              { value: 'all', label: 'All Status' },
+              { value: 'draft', label: 'Draft' },
+              { value: 'sent', label: 'Pending' },
+              { value: 'partial', label: 'Partial' },
+              { value: 'paid', label: 'Paid' },
+              { value: 'overdue', label: 'Overdue' },
+              { value: 'cancelled', label: 'Cancelled' },
+            ]}
+            value={statusFilter}
+            onChange={setStatusFilter}
+            placeholder="Filter by status"
+          />
+        </div>
       </div>
 
       {isLoading ? (

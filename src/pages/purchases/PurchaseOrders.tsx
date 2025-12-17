@@ -15,13 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { formatCurrency, formatDate, getStatusBadgeClass } from '@/lib/formatters';
@@ -416,21 +410,13 @@ export const PurchaseOrders: React.FC = () => {
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="form-label">Supplier</label>
-                  <Select
+                  <SearchableSelect
+                    options={suppliers.map(sup => ({ value: sup.id, label: `${sup.code} - ${sup.name}` }))}
                     value={formData.supplier_id}
-                    onValueChange={(value) => setFormData({ ...formData, supplier_id: value })}
-                  >
-                    <SelectTrigger className="input-field">
-                      <SelectValue placeholder="Select supplier" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {suppliers.map((sup) => (
-                        <SelectItem key={sup.id} value={sup.id}>
-                          {sup.code} - {sup.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(value) => setFormData({ ...formData, supplier_id: value })}
+                    placeholder="Select supplier"
+                    searchPlaceholder="Search suppliers..."
+                  />
                 </div>
                 <div>
                   <label className="form-label">Order Date</label>
@@ -477,21 +463,13 @@ export const PurchaseOrders: React.FC = () => {
                       {orderItems.map((item, index) => (
                         <tr key={index} className="border-t">
                           <td className="px-3 py-2">
-                            <Select
+                            <SearchableSelect
+                              options={products.map(prod => ({ value: prod.id, label: `${prod.sku} - ${prod.name}` }))}
                               value={item.product_id}
-                              onValueChange={(value) => handleProductChange(index, value)}
-                            >
-                              <SelectTrigger className="h-8">
-                                <SelectValue placeholder="Select product" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {products.map((prod) => (
-                                  <SelectItem key={prod.id} value={prod.id}>
-                                    {prod.sku} - {prod.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                              onChange={(value) => handleProductChange(index, value)}
+                              placeholder="Select product"
+                              searchPlaceholder="Search products..."
+                            />
                           </td>
                           <td className="px-3 py-2">
                             <Input
@@ -598,19 +576,21 @@ export const PurchaseOrders: React.FC = () => {
             className="pl-10 input-field"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-48 input-field">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="confirmed">Confirmed</SelectItem>
-            <SelectItem value="invoiced">Billed</SelectItem>
-            <SelectItem value="paid">Paid</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="w-full sm:w-48">
+          <SearchableSelect
+            options={[
+              { value: 'all', label: 'All Status' },
+              { value: 'draft', label: 'Draft' },
+              { value: 'confirmed', label: 'Confirmed' },
+              { value: 'invoiced', label: 'Billed' },
+              { value: 'paid', label: 'Paid' },
+              { value: 'cancelled', label: 'Cancelled' },
+            ]}
+            value={statusFilter}
+            onChange={setStatusFilter}
+            placeholder="Filter by status"
+          />
+        </div>
       </div>
 
       {isLoading ? (

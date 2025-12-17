@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Edit2, Trash2, Package, Archive } from 'lucide-react';
+import { Plus, Search, Filter, Edit2, Trash2, Package, Archive, Settings, FolderOpen } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAccounts } from '@/hooks/useAccounts';
@@ -14,12 +14,16 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { AccountValidationAlert } from '@/components/accounting/AccountValidationAlert';
@@ -27,6 +31,7 @@ import { AccountValidationAlert } from '@/components/accounting/AccountValidatio
 interface Category {
   id: string;
   name: string;
+  description?: string | null;
 }
 
 interface Product {
@@ -65,6 +70,13 @@ export const Products: React.FC = () => {
   const [filterType, setFilterType] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  
+  // Category management state
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [categoryForm, setCategoryForm] = useState({ name: '', description: '' });
+  const [deleteCategoryDialogOpen, setDeleteCategoryDialogOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   
   const [formData, setFormData] = useState({
     sku: '',
@@ -108,7 +120,7 @@ export const Products: React.FC = () => {
 
     const { data } = await supabase
       .from('product_categories')
-      .select('id, name')
+      .select('id, name, description')
       .eq('company_id', selectedCompany.id)
       .order('name');
 
@@ -222,6 +234,83 @@ export const Products: React.FC = () => {
     }
   };
 
+  // Category management functions
+  const openAddCategoryDialog = () => {
+    setEditingCategory(null);
+    setCategoryForm({ name: '', description: '' });
+    setIsCategoryDialogOpen(true);
+  };
+
+  const openEditCategoryDialog = (category: Category) => {
+    setEditingCategory(category);
+    setCategoryForm({ name: category.name, description: category.description || '' });
+    setIsCategoryDialogOpen(true);
+  };
+
+  const handleCategorySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCompany || !categoryForm.name.trim()) return;
+
+    if (editingCategory) {
+      const { error } = await supabase
+        .from('product_categories')
+        .update({ name: categoryForm.name.trim(), description: categoryForm.description.trim() || null })
+        .eq('id', editingCategory.id);
+
+      if (error) {
+        toast.error('Failed to update category');
+      } else {
+        toast.success('Category updated');
+        fetchCategories();
+      }
+    } else {
+      const { error } = await supabase
+        .from('product_categories')
+        .insert({
+          name: categoryForm.name.trim(),
+          description: categoryForm.description.trim() || null,
+          company_id: selectedCompany.id,
+        });
+
+      if (error) {
+        toast.error('Failed to create category');
+      } else {
+        toast.success('Category created');
+        fetchCategories();
+      }
+    }
+
+    setIsCategoryDialogOpen(false);
+  };
+
+  const confirmDeleteCategory = (category: Category) => {
+    setCategoryToDelete(category);
+    setDeleteCategoryDialogOpen(true);
+  };
+
+  const handleDeleteCategory = async () => {
+    if (!categoryToDelete) return;
+
+    const { error } = await supabase
+      .from('product_categories')
+      .delete()
+      .eq('id', categoryToDelete.id);
+
+    if (error) {
+      if (error.code === '23503') {
+        toast.error('Cannot delete category with products');
+      } else {
+        toast.error('Failed to delete category');
+      }
+    } else {
+      toast.success('Category deleted');
+      fetchCategories();
+    }
+
+    setDeleteCategoryDialogOpen(false);
+    setCategoryToDelete(null);
+  };
+
   const filteredProducts = products.filter(product => {
     const matchesSearch = 
       product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -233,6 +322,33 @@ export const Products: React.FC = () => {
   // Get available accounts
   const revenueAccounts = getRevenueAccounts();
   const cogsAccounts = [...getCogsAccounts(), ...getExpenseAccounts()];
+
+  // Options for SearchableSelect
+  const productTypeOptions = [
+    { value: 'stockable', label: 'Stockable' },
+    { value: 'service', label: 'Service' },
+  ];
+
+  const categoryOptions = [
+    { value: '', label: 'No Category' },
+    ...categories.map(cat => ({ value: cat.id, label: cat.name })),
+  ];
+
+  const revenueAccountOptions = [
+    { value: '', label: 'No Account' },
+    ...revenueAccounts.map(acc => ({ value: acc.id, label: `${acc.code} - ${acc.name}` })),
+  ];
+
+  const cogsAccountOptions = [
+    { value: '', label: 'No Account' },
+    ...cogsAccounts.map(acc => ({ value: acc.id, label: `${acc.code} - ${acc.name}` })),
+  ];
+
+  const filterTypeOptions = [
+    { value: 'all', label: 'All Types' },
+    { value: 'stockable', label: 'Stockable' },
+    { value: 'service', label: 'Service' },
+  ];
 
   return (
     <div className="space-y-6">
@@ -247,198 +363,261 @@ export const Products: React.FC = () => {
           </p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button 
-              className="gradient-primary text-primary-foreground shadow-glow"
-              onClick={() => {
-                setEditingProduct(null);
-                resetForm();
-              }}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Product
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {editingProduct ? 'Edit Product' : 'Create New Product'}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="form-label">SKU</label>
-                  <Input
-                    value={formData.sku}
-                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                    placeholder="e.g., PRD-001"
-                    className="input-field"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="form-label">Product Type</label>
-                  <Select
-                    value={formData.product_type}
-                    onValueChange={(value: 'stockable' | 'service') => 
-                      setFormData({ ...formData, product_type: value })
-                    }
-                  >
-                    <SelectTrigger className="input-field">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="stockable">Stockable</SelectItem>
-                      <SelectItem value="service">Service</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+        <div className="flex gap-2">
+          {/* Category Management Button */}
+          <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" onClick={openAddCategoryDialog}>
+                <FolderOpen className="w-4 h-4 mr-2" />
+                Categories
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingCategory ? 'Edit Category' : 'Manage Categories'}
+                </DialogTitle>
+              </DialogHeader>
               
-              <div>
-                <label className="form-label">Product Name</label>
-                <Input
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Enter product name"
-                  className="input-field"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+              {/* Add/Edit Category Form */}
+              <form onSubmit={handleCategorySubmit} className="space-y-4">
                 <div>
-                  <label className="form-label">Category</label>
-                  <Select
-                    value={formData.category_id || "none"}
-                    onValueChange={(value) => setFormData({ ...formData, category_id: value === "none" ? "" : value })}
-                  >
-                    <SelectTrigger className="input-field">
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No Category</SelectItem>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="form-label">Unit</label>
+                  <label className="form-label">Category Name</label>
                   <Input
-                    value={formData.unit}
-                    onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                    placeholder="e.g., pcs, kg, m"
-                    className="input-field"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="form-label">Unit Price (Sell)</label>
-                  <Input
-                    type="number"
-                    value={formData.unit_price}
-                    onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
-                    placeholder="0"
-                    className="input-field"
+                    value={categoryForm.name}
+                    onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                    placeholder="Enter category name"
                     required
                   />
                 </div>
                 <div>
-                  <label className="form-label">Cost Price (Buy)</label>
+                  <label className="form-label">Description (Optional)</label>
                   <Input
-                    type="number"
-                    value={formData.cost_price}
-                    onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })}
-                    placeholder="0"
-                    className="input-field"
-                    required
+                    value={categoryForm.description}
+                    onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
+                    placeholder="Enter description"
                   />
                 </div>
-              </div>
-
-              {formData.product_type === 'stockable' && (
-                <div>
-                  <label className="form-label">Initial Stock</label>
-                  <Input
-                    type="number"
-                    value={formData.stock_quantity}
-                    onChange={(e) => setFormData({ ...formData, stock_quantity: e.target.value })}
-                    placeholder="0"
-                    className="input-field"
-                  />
+                <div className="flex gap-2">
+                  {editingCategory && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setEditingCategory(null);
+                        setCategoryForm({ name: '', description: '' });
+                      }}
+                    >
+                      Cancel Edit
+                    </Button>
+                  )}
+                  <Button type="submit" className="flex-1">
+                    {editingCategory ? 'Update' : 'Add Category'}
+                  </Button>
                 </div>
-              )}
+              </form>
 
-              {/* Account Linking Section */}
+              {/* Category List */}
               <div className="border-t pt-4 mt-4">
-                <h3 className="font-semibold text-foreground mb-3">Account Linking</h3>
+                <h4 className="font-semibold mb-3">Existing Categories</h4>
+                {categories.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No categories yet</p>
+                ) : (
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {categories.map((cat) => (
+                      <div key={cat.id} className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                        <div>
+                          <p className="font-medium">{cat.name}</p>
+                          {cat.description && (
+                            <p className="text-xs text-muted-foreground">{cat.description}</p>
+                          )}
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEditCategoryDialog(cat)}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => confirmDeleteCategory(cat)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Add Product Button */}
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                className="gradient-primary text-primary-foreground shadow-glow"
+                onClick={() => {
+                  setEditingProduct(null);
+                  resetForm();
+                }}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Product
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingProduct ? 'Edit Product' : 'Create New Product'}
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4 mt-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="form-label">Revenue Account</label>
-                    <Select
-                      value={formData.revenue_account_id || "none"}
-                      onValueChange={(value) => setFormData({ ...formData, revenue_account_id: value === "none" ? "" : value })}
-                    >
-                      <SelectTrigger className="input-field">
-                        <SelectValue placeholder="Select revenue account" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No Account</SelectItem>
-                        {revenueAccounts.map((acc) => (
-                          <SelectItem key={acc.id} value={acc.id}>
-                            {acc.code} - {acc.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground mt-1">Used when selling this product</p>
+                    <label className="form-label">SKU</label>
+                    <Input
+                      value={formData.sku}
+                      onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                      placeholder="e.g., PRD-001"
+                      className="input-field"
+                      required
+                    />
                   </div>
                   <div>
-                    <label className="form-label">COGS / Expense Account</label>
-                    <Select
-                      value={formData.cogs_account_id || "none"}
-                      onValueChange={(value) => setFormData({ ...formData, cogs_account_id: value === "none" ? "" : value })}
-                    >
-                      <SelectTrigger className="input-field">
-                        <SelectValue placeholder="Select COGS account" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No Account</SelectItem>
-                        {cogsAccounts.map((acc) => (
-                          <SelectItem key={acc.id} value={acc.id}>
-                            {acc.code} - {acc.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground mt-1">Used for cost of goods sold</p>
+                    <label className="form-label">Product Type</label>
+                    <SearchableSelect
+                      options={productTypeOptions}
+                      value={formData.product_type}
+                      onChange={(value) => setFormData({ ...formData, product_type: value as 'stockable' | 'service' })}
+                      placeholder="Select type"
+                    />
                   </div>
                 </div>
-              </div>
+                
+                <div>
+                  <label className="form-label">Product Name</label>
+                  <Input
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Enter product name"
+                    className="input-field"
+                    required
+                  />
+                </div>
 
-              <div className="flex gap-3 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" className="flex-1 gradient-primary text-primary-foreground">
-                  {editingProduct ? 'Update' : 'Create'}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="form-label">Category</label>
+                    <SearchableSelect
+                      options={categoryOptions}
+                      value={formData.category_id}
+                      onChange={(value) => setFormData({ ...formData, category_id: value })}
+                      placeholder="Select category"
+                      searchPlaceholder="Search categories..."
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Unit</label>
+                    <Input
+                      value={formData.unit}
+                      onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                      placeholder="e.g., pcs, kg, m"
+                      className="input-field"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="form-label">Unit Price (Sell)</label>
+                    <Input
+                      type="number"
+                      value={formData.unit_price}
+                      onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
+                      placeholder="0"
+                      className="input-field"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Cost Price (Buy)</label>
+                    <Input
+                      type="number"
+                      value={formData.cost_price}
+                      onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })}
+                      placeholder="0"
+                      className="input-field"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {formData.product_type === 'stockable' && (
+                  <div>
+                    <label className="form-label">Initial Stock</label>
+                    <Input
+                      type="number"
+                      value={formData.stock_quantity}
+                      onChange={(e) => setFormData({ ...formData, stock_quantity: e.target.value })}
+                      placeholder="0"
+                      className="input-field"
+                    />
+                  </div>
+                )}
+
+                {/* Account Linking Section */}
+                <div className="border-t pt-4 mt-4">
+                  <h3 className="font-semibold text-foreground mb-3">Account Linking</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="form-label">Revenue Account</label>
+                      <SearchableSelect
+                        options={revenueAccountOptions}
+                        value={formData.revenue_account_id}
+                        onChange={(value) => setFormData({ ...formData, revenue_account_id: value })}
+                        placeholder="Select revenue account"
+                        searchPlaceholder="Search accounts..."
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Used when selling this product</p>
+                    </div>
+                    <div>
+                      <label className="form-label">COGS / Expense Account</label>
+                      <SearchableSelect
+                        options={cogsAccountOptions}
+                        value={formData.cogs_account_id}
+                        onChange={(value) => setFormData({ ...formData, cogs_account_id: value })}
+                        placeholder="Select COGS account"
+                        searchPlaceholder="Search accounts..."
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Used for cost of goods sold</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsDialogOpen(false)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" className="flex-1 gradient-primary text-primary-foreground">
+                    {editingProduct ? 'Update' : 'Create'}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Filters */}
@@ -452,17 +631,14 @@ export const Products: React.FC = () => {
             className="pl-10 input-field"
           />
         </div>
-        <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="w-full sm:w-48 input-field">
-            <Filter className="w-4 h-4 mr-2" />
-            <SelectValue placeholder="Filter by type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="stockable">Stockable</SelectItem>
-            <SelectItem value="service">Service</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="w-full sm:w-48">
+          <SearchableSelect
+            options={filterTypeOptions}
+            value={filterType}
+            onChange={setFilterType}
+            placeholder="Filter by type"
+          />
+        </div>
       </div>
 
       {/* Products Grid */}
@@ -490,25 +666,32 @@ export const Products: React.FC = () => {
               className="animate-fade-in hover:shadow-lg transition-all"
               style={{ animationDelay: `${index * 50}ms` }}
             >
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className={cn(
-                    'w-12 h-12 rounded-xl flex items-center justify-center',
-                    product.product_type === 'stockable' 
-                      ? 'bg-primary/10' 
-                      : 'bg-accent/10'
-                  )}>
-                    {product.product_type === 'stockable' ? (
-                      <Package className="w-6 h-6 text-primary" />
-                    ) : (
-                      <Archive className="w-6 h-6 text-accent" />
-                    )}
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      'w-10 h-10 rounded-lg flex items-center justify-center',
+                      product.product_type === 'stockable' 
+                        ? 'bg-primary/10 text-primary' 
+                        : 'bg-secondary/10 text-secondary-foreground'
+                    )}>
+                      {product.product_type === 'stockable' ? (
+                        <Package className="w-5 h-5" />
+                      ) : (
+                        <Archive className="w-5 h-5" />
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground line-clamp-1">{product.name}</h3>
+                      <p className="text-sm text-muted-foreground">{product.sku}</p>
+                    </div>
                   </div>
                   <div className="flex gap-1">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleEdit(product)}
+                      className="h-8 w-8 p-0"
                     >
                       <Edit2 className="w-4 h-4" />
                     </Button>
@@ -516,82 +699,80 @@ export const Products: React.FC = () => {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDelete(product.id)}
-                      className="text-destructive hover:text-destructive"
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
-                
-                <div className="mb-3">
-                  <p className="text-xs text-muted-foreground font-mono">{product.sku}</p>
-                  <h3 className="font-semibold text-foreground truncate">{product.name}</h3>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Sell Price</span>
+                    <span className="font-medium">{formatCurrency(product.unit_price)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Cost Price</span>
+                    <span className="font-medium">{formatCurrency(product.cost_price)}</span>
+                  </div>
+                  {product.product_type === 'stockable' && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Stock</span>
+                      <span className={cn(
+                        'font-medium',
+                        product.stock_quantity <= 0 ? 'text-destructive' : 'text-foreground'
+                      )}>
+                        {product.stock_quantity} {product.unit}
+                      </span>
+                    </div>
+                  )}
                   {product.category && (
-                    <p className="text-xs text-muted-foreground">{product.category.name}</p>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Category</span>
+                      <span className="font-medium">{product.category.name}</span>
+                    </div>
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 mb-4">
+                <div className="mt-3 pt-3 border-t flex items-center gap-2">
                   <span className={cn(
-                    'badge-status',
-                    product.product_type === 'stockable' 
-                      ? 'bg-primary/10 text-primary' 
-                      : 'bg-accent/10 text-accent'
+                    'text-xs px-2 py-1 rounded-full',
+                    product.product_type === 'stockable'
+                      ? 'bg-primary/10 text-primary'
+                      : 'bg-muted text-muted-foreground'
                   )}>
                     {product.product_type === 'stockable' ? 'Stockable' : 'Service'}
                   </span>
-                  <span className="text-sm text-muted-foreground">{product.unit}</span>
+                  {product.revenue_account && (
+                    <span className="text-xs text-muted-foreground">
+                      Rev: {product.revenue_account.code}
+                    </span>
+                  )}
                 </div>
-
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Sell Price</p>
-                    <p className="font-semibold text-success">{formatCurrency(product.unit_price)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Cost Price</p>
-                    <p className="font-medium text-muted-foreground">{formatCurrency(product.cost_price)}</p>
-                  </div>
-                </div>
-
-                {product.product_type === 'stockable' && (
-                  <div className="mt-4 pt-4 border-t border-border">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-muted-foreground">Stock</p>
-                      <p className={cn(
-                        'font-semibold',
-                        product.stock_quantity <= 0 
-                          ? 'text-destructive' 
-                          : product.stock_quantity < 10 
-                            ? 'text-warning' 
-                            : 'text-foreground'
-                      )}>
-                        {product.stock_quantity} {product.unit}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Account Links */}
-                {(product.revenue_account || product.cogs_account) && (
-                  <div className="mt-4 pt-4 border-t border-border space-y-1">
-                    {product.revenue_account && (
-                      <p className="text-xs text-muted-foreground">
-                        Revenue: <span className="text-foreground">{product.revenue_account.code}</span>
-                      </p>
-                    )}
-                    {product.cogs_account && (
-                      <p className="text-xs text-muted-foreground">
-                        COGS: <span className="text-foreground">{product.cogs_account.code}</span>
-                      </p>
-                    )}
-                  </div>
-                )}
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      {/* Delete Category Confirmation */}
+      <AlertDialog open={deleteCategoryDialogOpen} onOpenChange={setDeleteCategoryDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Category</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{categoryToDelete?.name}"? 
+              This action cannot be undone. Products using this category will be unassigned.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteCategory} className="bg-destructive text-destructive-foreground">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

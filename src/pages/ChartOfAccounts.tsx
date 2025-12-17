@@ -12,13 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   Collapsible,
   CollapsibleContent,
@@ -353,21 +347,12 @@ export const ChartOfAccounts: React.FC = () => {
               </div>
               <div>
                 <label className="form-label">Account Type</label>
-                <Select
+                <SearchableSelect
+                  options={accountTypes.map(type => ({ value: type.value, label: type.label }))}
                   value={formData.account_type}
-                  onValueChange={(value) => setFormData({ ...formData, account_type: value })}
-                >
-                  <SelectTrigger className="input-field">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {accountTypes.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={(value) => setFormData({ ...formData, account_type: value })}
+                  placeholder="Select account type"
+                />
               </div>
               <div className="flex gap-3 pt-4">
                 <Button
@@ -398,20 +383,17 @@ export const ChartOfAccounts: React.FC = () => {
             className="pl-10 input-field"
           />
         </div>
-        <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="w-full sm:w-48 input-field">
-            <Filter className="w-4 h-4 mr-2" />
-            <SelectValue placeholder="Filter by type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            {accountTypes.map((type) => (
-              <SelectItem key={type.value} value={type.value}>
-                {type.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="w-full sm:w-48">
+          <SearchableSelect
+            options={[
+              { value: 'all', label: 'All Types' },
+              ...accountTypes.map(type => ({ value: type.value, label: type.label })),
+            ]}
+            value={filterType}
+            onChange={setFilterType}
+            placeholder="Filter by type"
+          />
+        </div>
       </div>
 
       {/* Accounts List */}
