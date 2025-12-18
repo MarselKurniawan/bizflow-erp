@@ -6,6 +6,10 @@ export const formatCurrency = (value: number) => {
   }).format(value);
 };
 
+export const formatNumber = (value: number) => {
+  return new Intl.NumberFormat('id-ID').format(value);
+};
+
 export const formatCompactCurrency = (value: number) => {
   if (value >= 1000000000) {
     return `Rp ${(value / 1000000000).toFixed(1)}B`;
