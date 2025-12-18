@@ -327,6 +327,7 @@ export const Products: React.FC = () => {
   const productTypeOptions = [
     { value: 'stockable', label: 'Stockable' },
     { value: 'service', label: 'Service' },
+    { value: 'raw_material', label: 'Raw Material' },
   ];
 
   const categoryOptions = [
@@ -348,6 +349,7 @@ export const Products: React.FC = () => {
     { value: 'all', label: 'All Types' },
     { value: 'stockable', label: 'Stockable' },
     { value: 'service', label: 'Service' },
+    { value: 'raw_material', label: 'Raw Material' },
   ];
 
   return (
@@ -494,7 +496,7 @@ export const Products: React.FC = () => {
                     <SearchableSelect
                       options={productTypeOptions}
                       value={formData.product_type}
-                      onChange={(value) => setFormData({ ...formData, product_type: value as 'stockable' | 'service' })}
+                      onChange={(value) => setFormData({ ...formData, product_type: value as 'stockable' | 'service' | 'raw_material' })}
                       placeholder="Select type"
                     />
                   </div>

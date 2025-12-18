@@ -15,7 +15,11 @@ import {
   CreditCard,
   Building2,
   LogOut,
-  Settings
+  Settings,
+  Warehouse,
+  ArrowLeftRight,
+  ClipboardCheck,
+  Boxes
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,6 +41,7 @@ const menuItems: MenuItem[] = [
     icon: ShoppingCart, 
     label: 'Sales',
     children: [
+      { label: 'Dashboard', path: '/sales/dashboard' },
       { label: 'Customers', path: '/sales/customers' },
       { label: 'Sales Orders', path: '/sales/orders' },
       { label: 'Invoices', path: '/sales/invoices' },
@@ -47,16 +52,28 @@ const menuItems: MenuItem[] = [
     icon: Truck, 
     label: 'Purchases',
     children: [
+      { label: 'Dashboard', path: '/purchases/dashboard' },
       { label: 'Suppliers', path: '/purchases/suppliers' },
       { label: 'Purchase Orders', path: '/purchases/orders' },
       { label: 'Bills', path: '/purchases/bills' },
       { label: 'Payments', path: '/purchases/payments' },
     ]
   },
+  { 
+    icon: Warehouse, 
+    label: 'Inventory',
+    children: [
+      { label: 'Dashboard', path: '/inventory/dashboard' },
+      { label: 'Warehouses', path: '/inventory/warehouses' },
+      { label: 'Stock', path: '/inventory/stock' },
+      { label: 'Transfers', path: '/inventory/transfers' },
+      { label: 'Stock Opname', path: '/inventory/opname' },
+    ]
+  },
   { icon: FileText, label: 'Journal Entries', path: '/journal' },
   { 
     icon: BarChart3, 
-    label: 'Reports',
+    label: 'Financial Reports',
     children: [
       { label: 'Profit & Loss', path: '/reports/profit-loss' },
       { label: 'Balance Sheet', path: '/reports/balance-sheet' },
@@ -80,7 +97,7 @@ export const Sidebar: React.FC = () => {
   const location = useLocation();
   const { signOut, profile, isAdmin } = useAuth();
   const { selectedCompany } = useCompany();
-  const [expandedItems, setExpandedItems] = useState<string[]>(['Sales', 'Purchases', 'Reports']);
+  const [expandedItems, setExpandedItems] = useState<string[]>(['Sales', 'Purchases', 'Inventory', 'Financial Reports']);
 
   const toggleExpanded = (label: string) => {
     setExpandedItems(prev => 
