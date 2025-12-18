@@ -240,6 +240,80 @@ export type Database = {
           },
         ]
       }
+      down_payments: {
+        Row: {
+          amount: number
+          cash_account_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          dp_date: string
+          dp_number: string
+          id: string
+          notes: string | null
+          payment_type: string
+          purchase_order_id: string | null
+          sales_order_id: string | null
+        }
+        Insert: {
+          amount: number
+          cash_account_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          dp_date?: string
+          dp_number: string
+          id?: string
+          notes?: string | null
+          payment_type: string
+          purchase_order_id?: string | null
+          sales_order_id?: string | null
+        }
+        Update: {
+          amount?: number
+          cash_account_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          dp_date?: string
+          dp_number?: string
+          id?: string
+          notes?: string | null
+          payment_type?: string
+          purchase_order_id?: string | null
+          sales_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "down_payments_cash_account_id_fkey"
+            columns: ["cash_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "down_payments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "down_payments_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "down_payments_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_stock: {
         Row: {
           created_at: string
@@ -819,6 +893,8 @@ export type Database = {
           company_id: string
           created_at: string
           created_by: string | null
+          dp_amount: number | null
+          dp_paid: number | null
           due_date: string | null
           id: string
           notes: string | null
@@ -835,6 +911,8 @@ export type Database = {
           company_id: string
           created_at?: string
           created_by?: string | null
+          dp_amount?: number | null
+          dp_paid?: number | null
           due_date?: string | null
           id?: string
           notes?: string | null
@@ -851,6 +929,8 @@ export type Database = {
           company_id?: string
           created_at?: string
           created_by?: string | null
+          dp_amount?: number | null
+          dp_paid?: number | null
           due_date?: string | null
           id?: string
           notes?: string | null
@@ -937,6 +1017,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           customer_id: string
+          dp_amount: number | null
+          dp_paid: number | null
           due_date: string | null
           id: string
           notes: string | null
@@ -953,6 +1035,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           customer_id: string
+          dp_amount?: number | null
+          dp_paid?: number | null
           due_date?: string | null
           id?: string
           notes?: string | null
@@ -969,6 +1053,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           customer_id?: string
+          dp_amount?: number | null
+          dp_paid?: number | null
           due_date?: string | null
           id?: string
           notes?: string | null
