@@ -35,7 +35,15 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
   { icon: BookOpen, label: 'Chart of Accounts', path: '/accounts' },
-  { icon: CreditCard, label: 'Cash & Bank', path: '/cash-bank' },
+  { 
+    icon: CreditCard, 
+    label: 'Cash & Bank',
+    children: [
+      { label: 'Overview', path: '/cash-bank' },
+      { label: 'Cashflow', path: '/cash-bank/cashflow' },
+      { label: 'Cashflow Report', path: '/reports/cashflow' },
+    ]
+  },
   { icon: Package, label: 'Products', path: '/products' },
   { 
     icon: ShoppingCart, 
@@ -46,6 +54,7 @@ const menuItems: MenuItem[] = [
       { label: 'Sales Orders', path: '/sales/orders' },
       { label: 'Invoices', path: '/sales/invoices' },
       { label: 'Payments', path: '/sales/payments' },
+      { label: 'Sales Report', path: '/reports/sales' },
     ]
   },
   { 
@@ -57,6 +66,7 @@ const menuItems: MenuItem[] = [
       { label: 'Purchase Orders', path: '/purchases/orders' },
       { label: 'Bills', path: '/purchases/bills' },
       { label: 'Payments', path: '/purchases/payments' },
+      { label: 'Purchase Report', path: '/reports/purchases' },
     ]
   },
   { 
@@ -64,10 +74,12 @@ const menuItems: MenuItem[] = [
     label: 'Inventory',
     children: [
       { label: 'Dashboard', path: '/inventory/dashboard' },
+      { label: 'Materials', path: '/inventory/materials' },
       { label: 'Warehouses', path: '/inventory/warehouses' },
       { label: 'Stock', path: '/inventory/stock' },
       { label: 'Transfers', path: '/inventory/transfers' },
       { label: 'Stock Opname', path: '/inventory/opname' },
+      { label: 'Inventory Report', path: '/reports/inventory' },
     ]
   },
   { icon: FileText, label: 'Journal Entries', path: '/journal' },
