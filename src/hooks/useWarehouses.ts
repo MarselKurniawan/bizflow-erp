@@ -2,50 +2,46 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
 
-export interface Product {
+export interface Warehouse {
   id: string;
-  sku: string;
+  code: string;
   name: string;
-  product_type: 'stockable' | 'service' | 'raw_material';
-  unit: string;
-  unit_price: number;
-  cost_price: number;
-  stock_quantity: number;
+  location: string | null;
+  address: string | null;
+  pic_user_id: string | null;
   is_active: boolean;
-  revenue_account_id: string | null;
-  cogs_account_id: string | null;
-  category_id: string | null;
+  company_id: string;
 }
 
-export const useProducts = () => {
+export const useWarehouses = () => {
   const { selectedCompany } = useCompany();
-  const [products, setProducts] = useState<Product[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchProducts = async () => {
+  const fetchWarehouses = async () => {
     if (!selectedCompany) return;
     
     setIsLoading(true);
     const { data, error } = await supabase
-      .from('products')
+      .from('warehouses')
       .select('*')
       .eq('company_id', selectedCompany.id)
       .eq('is_active', true)
       .order('name');
 
     if (!error) {
-      setProducts(data || []);
+      setWarehouses(data || []);
     }
     setIsLoading(false);
   };
 
   useEffect(() => {
-    fetchProducts();
+    fetchWarehouses();
   }, [selectedCompany]);
 
   return {
-    products,
+    warehouses,
     isLoading,
-    fetchProducts,
+    fetchWarehouses,
   };
 };
