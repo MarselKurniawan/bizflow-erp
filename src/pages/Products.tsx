@@ -38,7 +38,7 @@ interface Product {
   id: string;
   sku: string;
   name: string;
-  product_type: 'stockable' | 'service';
+  product_type: 'stockable' | 'service' | 'raw_material';
   unit: string;
   unit_price: number;
   cost_price: number;
@@ -81,7 +81,7 @@ export const Products: React.FC = () => {
   const [formData, setFormData] = useState({
     sku: '',
     name: '',
-    product_type: 'stockable' as 'stockable' | 'service',
+    product_type: 'stockable' as 'stockable' | 'service' | 'raw_material',
     category_id: '',
     unit: 'pcs',
     unit_price: '',
