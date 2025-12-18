@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Eye, FileText, Trash2, Truck, Wallet } from 'lucide-react';
+import { Plus, Search, Eye, FileText, Trash2, Package, Wallet, Truck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -668,12 +668,13 @@ export const PurchaseOrders: React.FC = () => {
                               <Wallet className="w-4 h-4" />
                             </Button>
                           )}
-                          {order.status === 'confirmed' && (
+                          {order.status === 'received' && (
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleGenerateBill(order)}
                               className="text-primary"
+                              title="Generate Bill"
                             >
                               <FileText className="w-4 h-4" />
                             </Button>
@@ -806,6 +807,16 @@ export const PurchaseOrders: React.FC = () => {
                   </Button>
                 )}
                 {viewingOrder.status === 'confirmed' && (
+                  <Button
+                    variant="outline"
+                    onClick={() => window.location.href = '/purchases/receipts'}
+                    className="flex-1"
+                  >
+                    <Package className="w-4 h-4 mr-2" />
+                    Go to Receive
+                  </Button>
+                )}
+                {viewingOrder.status === 'received' && (
                   <Button onClick={() => handleGenerateBill(viewingOrder)} className="flex-1 gradient-primary text-primary-foreground">
                     <FileText className="w-4 h-4 mr-2" />
                     Generate Bill

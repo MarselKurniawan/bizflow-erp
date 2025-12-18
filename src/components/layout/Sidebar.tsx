@@ -44,7 +44,18 @@ const menuItems: MenuItem[] = [
       { label: 'Cashflow Report', path: '/reports/cashflow' },
     ]
   },
-  { icon: Package, label: 'Products', path: '/products' },
+  { 
+    icon: Package, 
+    label: 'Inventory',
+    children: [
+      { label: 'Products (Sales)', path: '/products' },
+      { label: 'Materials (Purchase)', path: '/inventory/materials' },
+      { label: 'Stock per Warehouse', path: '/inventory/stock' },
+      { label: 'Transfers', path: '/inventory/transfers' },
+      { label: 'Stock Opname', path: '/inventory/opname' },
+      { label: 'Inventory Report', path: '/reports/inventory' },
+    ]
+  },
   { 
     icon: ShoppingCart, 
     label: 'Sales',
@@ -64,24 +75,13 @@ const menuItems: MenuItem[] = [
       { label: 'Dashboard', path: '/purchases/dashboard' },
       { label: 'Suppliers', path: '/purchases/suppliers' },
       { label: 'Purchase Orders', path: '/purchases/orders' },
+      { label: 'Goods Receipt', path: '/purchases/receipts' },
       { label: 'Bills', path: '/purchases/bills' },
       { label: 'Payments', path: '/purchases/payments' },
       { label: 'Purchase Report', path: '/reports/purchases' },
     ]
   },
-  { 
-    icon: Warehouse, 
-    label: 'Inventory',
-    children: [
-      { label: 'Dashboard', path: '/inventory/dashboard' },
-      { label: 'Materials', path: '/inventory/materials' },
-      { label: 'Warehouses', path: '/inventory/warehouses' },
-      { label: 'Stock', path: '/inventory/stock' },
-      { label: 'Transfers', path: '/inventory/transfers' },
-      { label: 'Stock Opname', path: '/inventory/opname' },
-      { label: 'Inventory Report', path: '/reports/inventory' },
-    ]
-  },
+  { icon: Warehouse, label: 'Warehouses', path: '/inventory/warehouses' },
   { icon: FileText, label: 'Journal Entries', path: '/journal' },
   { 
     icon: BarChart3, 

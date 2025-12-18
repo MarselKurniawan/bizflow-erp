@@ -20,6 +20,7 @@ import SalesPayments from "./pages/sales/Payments";
 import SalesDashboard from "./pages/sales/SalesDashboard";
 import Suppliers from "./pages/purchases/Suppliers";
 import PurchaseOrders from "./pages/purchases/PurchaseOrders";
+import GoodsReceipt from "./pages/purchases/GoodsReceipt";
 import Bills from "./pages/purchases/Bills";
 import PurchasePayments from "./pages/purchases/Payments";
 import PurchasesDashboard from "./pages/purchases/PurchasesDashboard";
@@ -74,6 +75,7 @@ const App = () => (
                 <Route path="/purchases/dashboard" element={<PurchasesDashboard />} />
                 <Route path="/purchases/suppliers" element={<Suppliers />} />
                 <Route path="/purchases/orders" element={<PurchaseOrders />} />
+                <Route path="/purchases/receipts" element={<GoodsReceipt />} />
                 <Route path="/purchases/bills" element={<Bills />} />
                 <Route path="/purchases/payments" element={<PurchasePayments />} />
                 {/* Inventory Routes */}
