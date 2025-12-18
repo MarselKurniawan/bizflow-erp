@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowUpCircle, ArrowDownCircle, TrendingUp, TrendingDown, Calendar, Download } from 'lucide-react';
+import { ArrowUpCircle, ArrowDownCircle, TrendingUp, TrendingDown } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -18,11 +17,15 @@ import { cn } from '@/lib/utils';
 interface CashflowItem {
   id: string;
   date: string;
+  entryNumber: string;
   type: 'increase' | 'decrease';
   amount: number;
   category: 'beban' | 'non_beban';
-  source: string;
-  reference: string;
+  cashAccount: string;
+  cashAccountCode: string;
+  contraAccount: string;
+  contraAccountCode: string;
+  contraAccountType: string;
 }
 
 export const Cashflow: React.FC = () => {
@@ -41,23 +44,43 @@ export const Cashflow: React.FC = () => {
     if (!selectedCompany) return;
     setIsLoading(true);
 
-    // Get all payments (incoming = increase, outgoing = decrease)
-    const { data: payments, error } = await supabase
-      .from('payments')
+    // Get all cash/bank accounts first
+    const { data: cashAccounts } = await supabase
+      .from('chart_of_accounts')
+      .select('id, code, name')
+      .eq('company_id', selectedCompany.id)
+      .eq('account_type', 'cash_bank')
+      .eq('is_active', true);
+
+    const cashAccountIds = (cashAccounts || []).map(a => a.id);
+    const cashAccountMap = Object.fromEntries(
+      (cashAccounts || []).map(a => [a.id, { code: a.code, name: a.name }])
+    );
+
+    if (cashAccountIds.length === 0) {
+      setTransactions([]);
+      setIsLoading(false);
+      return;
+    }
+
+    // Get journal entry lines for cash accounts
+    const { data: cashLines, error } = await supabase
+      .from('journal_entry_lines')
       .select(`
         id,
-        payment_date,
-        payment_type,
-        amount,
-        payment_number,
-        customer:customers(name),
-        supplier:suppliers(name),
-        cash_account:chart_of_accounts!payments_cash_account_id_fkey(name)
+        account_id,
+        debit_amount,
+        credit_amount,
+        journal_entry:journal_entries!journal_entry_lines_journal_entry_id_fkey(
+          id, entry_date, entry_number, is_posted, company_id
+        )
       `)
-      .eq('company_id', selectedCompany.id)
-      .gte('payment_date', dateFrom)
-      .lte('payment_date', dateTo)
-      .order('payment_date', { ascending: false });
+      .in('account_id', cashAccountIds)
+      .eq('journal_entry.is_posted', true)
+      .eq('journal_entry.company_id', selectedCompany.id)
+      .gte('journal_entry.entry_date', dateFrom)
+      .lte('journal_entry.entry_date', dateTo)
+      .order('journal_entry(entry_date)', { ascending: false });
 
     if (error) {
       console.error('Error fetching cashflow:', error);
@@ -65,20 +88,62 @@ export const Cashflow: React.FC = () => {
       return;
     }
 
-    // Transform to cashflow items
-    const items: CashflowItem[] = (payments || []).map((p: any) => ({
-      id: p.id,
-      date: p.payment_date,
-      type: p.payment_type === 'incoming' ? 'increase' : 'decrease',
-      amount: p.amount,
-      // Outgoing payments to suppliers are beban (expenses)
-      // Incoming payments from customers are non_beban
-      category: p.payment_type === 'outgoing' ? 'beban' : 'non_beban',
-      source: p.payment_type === 'incoming' 
-        ? (p.customer?.name || 'Customer Payment')
-        : (p.supplier?.name || 'Supplier Payment'),
-      reference: p.payment_number,
-    }));
+    // For each cash line, find the contra account(s)
+    const items: CashflowItem[] = [];
+
+    for (const line of cashLines || []) {
+      if (!line.journal_entry) continue;
+      
+      const journalEntryId = (line.journal_entry as any).id;
+      
+      // Get all lines for this journal entry to find contra account
+      const { data: allLines } = await supabase
+        .from('journal_entry_lines')
+        .select(`
+          account_id,
+          debit_amount,
+          credit_amount,
+          account:chart_of_accounts!journal_entry_lines_account_id_fkey(
+            id, code, name, account_type
+          )
+        `)
+        .eq('journal_entry_id', journalEntryId)
+        .neq('account_id', line.account_id);
+
+      // Find the main contra account (the one with opposite amount)
+      const isDebit = (line.debit_amount || 0) > 0;
+      const amount = isDebit ? line.debit_amount || 0 : line.credit_amount || 0;
+      
+      // Get contra accounts
+      const contraLines = (allLines || []).filter((l: any) => {
+        if (isDebit) return (l.credit_amount || 0) > 0;
+        return (l.debit_amount || 0) > 0;
+      });
+
+      // Take the first contra account (or combine if multiple)
+      const contraAccount = contraLines[0]?.account as any;
+      const contraAccountType = contraAccount?.account_type || '';
+      
+      // Determine category: expense accounts are beban, others are non_beban
+      const isBeban = contraAccountType === 'expense' || 
+                      (isDebit === false && contraAccountType === 'asset');
+      
+      const cashAcc = cashAccountMap[line.account_id];
+      
+      items.push({
+        id: line.id,
+        date: (line.journal_entry as any).entry_date,
+        entryNumber: (line.journal_entry as any).entry_number,
+        type: isDebit ? 'increase' : 'decrease',
+        amount,
+        category: isBeban ? 'beban' : 'non_beban',
+        cashAccount: cashAcc?.name || '',
+        cashAccountCode: cashAcc?.code || '',
+        contraAccount: contraAccount?.name || (contraLines.length > 1 ? `${contraLines.length} accounts` : '-'),
+        contraAccountCode: contraAccount?.code || '',
+        contraAccountType,
+      });
+    }
 
     setTransactions(items);
     setIsLoading(false);
@@ -115,7 +180,7 @@ export const Cashflow: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-heading font-bold text-foreground">Cashflow</h1>
-          <p className="text-muted-foreground mt-1">Arus kas masuk dan keluar</p>
+          <p className="text-muted-foreground mt-1">Arus kas masuk dan keluar dengan detail akun</p>
         </div>
       </div>
 
@@ -251,8 +316,9 @@ export const Cashflow: React.FC = () => {
                 <thead>
                   <tr>
                     <th>Tanggal</th>
-                    <th>Referensi</th>
-                    <th>Sumber</th>
+                    <th>No. Jurnal</th>
+                    <th>Akun Kas/Bank</th>
+                    <th>Akun Lawan</th>
                     <th>Kategori</th>
                     <th className="text-right">Increase</th>
                     <th className="text-right">Decrease</th>
@@ -262,8 +328,20 @@ export const Cashflow: React.FC = () => {
                   {filteredTransactions.map((txn) => (
                     <tr key={txn.id}>
                       <td>{formatDate(txn.date)}</td>
-                      <td className="font-mono text-sm">{txn.reference}</td>
-                      <td>{txn.source}</td>
+                      <td className="font-mono text-sm">{txn.entryNumber}</td>
+                      <td>
+                        <div>
+                          <span className="font-mono text-xs text-muted-foreground">{txn.cashAccountCode}</span>
+                          <p className="font-medium">{txn.cashAccount}</p>
+                        </div>
+                      </td>
+                      <td>
+                        <div>
+                          <span className="font-mono text-xs text-muted-foreground">{txn.contraAccountCode}</span>
+                          <p className="font-medium">{txn.contraAccount}</p>
+                          <span className="text-xs text-muted-foreground capitalize">{txn.contraAccountType.replace('_', ' ')}</span>
+                        </div>
+                      </td>
                       <td>
                         <span className={cn(
                           'badge-status',
@@ -291,7 +369,7 @@ export const Cashflow: React.FC = () => {
                 </tbody>
                 <tfoot>
                   <tr className="font-bold border-t-2">
-                    <td colSpan={4}>Total</td>
+                    <td colSpan={5}>Total</td>
                     <td className="text-right text-success">{formatCurrency(totalIncrease)}</td>
                     <td className="text-right text-destructive">{formatCurrency(totalDecrease)}</td>
                   </tr>
