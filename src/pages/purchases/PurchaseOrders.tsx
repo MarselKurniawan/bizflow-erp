@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Eye, FileText, Trash2, Truck } from 'lucide-react';
+import { Plus, Search, Eye, FileText, Trash2, Truck, Wallet } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { formatCurrency, formatDate, getStatusBadgeClass } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import { AccountValidationAlert } from '@/components/accounting/AccountValidationAlert';
+import { DownPaymentDialog } from '@/components/orders/DownPaymentDialog';
 
 interface PurchaseOrder {
   id: string;
@@ -32,6 +33,8 @@ interface PurchaseOrder {
   subtotal: number;
   tax_amount: number;
   total_amount: number;
+  dp_amount: number;
+  dp_paid: number;
   notes: string | null;
   suppliers?: { id: string; code: string; name: string };
 }
@@ -59,6 +62,8 @@ export const PurchaseOrders: React.FC = () => {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [viewingOrder, setViewingOrder] = useState<PurchaseOrder | null>(null);
   const [viewingItems, setViewingItems] = useState<OrderItem[]>([]);
+  const [isDpDialogOpen, setIsDpDialogOpen] = useState(false);
+  const [dpOrder, setDpOrder] = useState<PurchaseOrder | null>(null);
 
   const [formData, setFormData] = useState({
     supplier_id: '',
@@ -261,8 +266,17 @@ export const PurchaseOrders: React.FC = () => {
     }
   };
 
+  const handleOpenDpDialog = (order: PurchaseOrder) => {
+    setDpOrder(order);
+    setIsDpDialogOpen(true);
+  };
+
   const handleGenerateBill = async (order: PurchaseOrder) => {
     if (!selectedCompany || !user) return;
+
+    // Calculate bill amount (minus DP already paid)
+    const dpPaid = order.dp_paid || 0;
+    const billTotal = order.total_amount - dpPaid;
 
     const date = new Date();
     const billNumber = `BILL-${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
@@ -282,10 +296,10 @@ export const PurchaseOrders: React.FC = () => {
         status: 'sent',
         subtotal: order.subtotal,
         tax_amount: order.tax_amount,
-        total_amount: order.total_amount,
-        outstanding_amount: order.total_amount,
+        total_amount: billTotal, // Reduced by DP
+        outstanding_amount: billTotal,
         paid_amount: 0,
-        notes: order.notes,
+        notes: dpPaid > 0 ? `${order.notes || ''}\nDP sudah dibayar: ${formatCurrency(dpPaid)}` : order.notes,
         created_by: user.id,
       })
       .select()
@@ -617,6 +631,7 @@ export const PurchaseOrders: React.FC = () => {
                     <th>Supplier</th>
                     <th>Status</th>
                     <th className="text-right">Total</th>
+                    <th className="text-right">DP Paid</th>
                     <th className="text-right">Actions</th>
                   </tr>
                 </thead>
@@ -633,10 +648,36 @@ export const PurchaseOrders: React.FC = () => {
                       </td>
                       <td className="text-right font-medium">{formatCurrency(order.total_amount || 0)}</td>
                       <td className="text-right">
+                        {(order.dp_paid || 0) > 0 ? (
+                          <span className="text-destructive font-medium">{formatCurrency(order.dp_paid)}</span>
+                        ) : '-'}
+                      </td>
+                      <td className="text-right">
                         <div className="flex justify-end gap-1">
                           <Button variant="ghost" size="sm" onClick={() => handleView(order)}>
                             <Eye className="w-4 h-4" />
                           </Button>
+                          {(order.status === 'draft' || order.status === 'confirmed') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenDpDialog(order)}
+                              className="text-warning"
+                              title="Input Down Payment"
+                            >
+                              <Wallet className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {order.status === 'confirmed' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleGenerateBill(order)}
+                              className="text-primary"
+                            >
+                              <FileText className="w-4 h-4" />
+                            </Button>
+                          )}
                           {order.status === 'draft' && (
                             <Button
                               variant="ghost"
@@ -731,9 +772,34 @@ export const PurchaseOrders: React.FC = () => {
                   <span>Total</span>
                   <span>{formatCurrency(viewingOrder.total_amount || 0)}</span>
                 </div>
+                {(viewingOrder.dp_paid || 0) > 0 && (
+                  <>
+                    <div className="flex justify-between text-destructive">
+                      <span>Down Payment</span>
+                      <span>-{formatCurrency(viewingOrder.dp_paid)}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold">
+                      <span>Sisa (Bill Amount)</span>
+                      <span>{formatCurrency(viewingOrder.total_amount - viewingOrder.dp_paid)}</span>
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="flex gap-3">
+                {(viewingOrder.status === 'draft' || viewingOrder.status === 'confirmed') && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsViewDialogOpen(false);
+                      handleOpenDpDialog(viewingOrder);
+                    }}
+                    className="flex-1"
+                  >
+                    <Wallet className="w-4 h-4 mr-2" />
+                    Input DP
+                  </Button>
+                )}
                 {viewingOrder.status === 'draft' && (
                   <Button onClick={() => handleConfirmOrder(viewingOrder.id)} className="flex-1">
                     Confirm Order
@@ -753,6 +819,24 @@ export const PurchaseOrders: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Down Payment Dialog */}
+      {dpOrder && (
+        <DownPaymentDialog
+          open={isDpDialogOpen}
+          onOpenChange={setIsDpDialogOpen}
+          type="purchase"
+          orderId={dpOrder.id}
+          orderNumber={dpOrder.order_number}
+          totalAmount={dpOrder.total_amount}
+          dpPaid={dpOrder.dp_paid || 0}
+          customerOrSupplierName={dpOrder.suppliers?.name || ''}
+          onSuccess={() => {
+            fetchOrders();
+            setDpOrder(null);
+          }}
+        />
+      )}
     </div>
   );
 };
