@@ -11,6 +11,7 @@ import SelectCompany from "./pages/SelectCompany";
 import Dashboard from "./pages/Dashboard";
 import ChartOfAccounts from "./pages/ChartOfAccounts";
 import CashBank from "./pages/CashBank";
+import Cashflow from "./pages/cashbank/Cashflow";
 import Products from "./pages/Products";
 import Customers from "./pages/sales/Customers";
 import SalesOrders from "./pages/sales/SalesOrders";
@@ -23,6 +24,7 @@ import Bills from "./pages/purchases/Bills";
 import PurchasePayments from "./pages/purchases/Payments";
 import PurchasesDashboard from "./pages/purchases/PurchasesDashboard";
 import InventoryDashboard from "./pages/inventory/InventoryDashboard";
+import Materials from "./pages/inventory/Materials";
 import Warehouses from "./pages/inventory/Warehouses";
 import InventoryStock from "./pages/inventory/InventoryStock";
 import StockTransfers from "./pages/inventory/StockTransfers";
@@ -34,6 +36,10 @@ import GeneralLedger from "./pages/reports/GeneralLedger";
 import TrialBalance from "./pages/reports/TrialBalance";
 import AgedReceivables from "./pages/reports/AgedReceivables";
 import AgedPayables from "./pages/reports/AgedPayables";
+import CashflowReport from "./pages/reports/CashflowReport";
+import SalesReport from "./pages/reports/SalesReport";
+import PurchaseReport from "./pages/reports/PurchaseReport";
+import InventoryReport from "./pages/reports/InventoryReport";
 import Users from "./pages/settings/Users";
 import Companies from "./pages/settings/Companies";
 import NotFound from "./pages/NotFound";
@@ -56,6 +62,7 @@ const App = () => (
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/accounts" element={<ChartOfAccounts />} />
                 <Route path="/cash-bank" element={<CashBank />} />
+                <Route path="/cash-bank/cashflow" element={<Cashflow />} />
                 <Route path="/products" element={<Products />} />
                 {/* Sales Routes */}
                 <Route path="/sales/dashboard" element={<SalesDashboard />} />
@@ -71,11 +78,12 @@ const App = () => (
                 <Route path="/purchases/payments" element={<PurchasePayments />} />
                 {/* Inventory Routes */}
                 <Route path="/inventory/dashboard" element={<InventoryDashboard />} />
+                <Route path="/inventory/materials" element={<Materials />} />
                 <Route path="/inventory/warehouses" element={<Warehouses />} />
                 <Route path="/inventory/stock" element={<InventoryStock />} />
                 <Route path="/inventory/transfers" element={<StockTransfers />} />
                 <Route path="/inventory/opname" element={<StockOpname />} />
-                {/* Journal & Financial Reports */}
+                {/* Journal & Reports */}
                 <Route path="/journal" element={<JournalEntries />} />
                 <Route path="/reports/profit-loss" element={<ProfitLoss />} />
                 <Route path="/reports/balance-sheet" element={<BalanceSheet />} />
@@ -83,6 +91,10 @@ const App = () => (
                 <Route path="/reports/trial-balance" element={<TrialBalance />} />
                 <Route path="/reports/aged-receivables" element={<AgedReceivables />} />
                 <Route path="/reports/aged-payables" element={<AgedPayables />} />
+                <Route path="/reports/cashflow" element={<CashflowReport />} />
+                <Route path="/reports/sales" element={<SalesReport />} />
+                <Route path="/reports/purchases" element={<PurchaseReport />} />
+                <Route path="/reports/inventory" element={<InventoryReport />} />
                 {/* Settings */}
                 <Route path="/settings/users" element={<Users />} />
                 <Route path="/settings/companies" element={<Companies />} />
