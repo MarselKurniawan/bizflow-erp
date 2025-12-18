@@ -16,10 +16,17 @@ import Customers from "./pages/sales/Customers";
 import SalesOrders from "./pages/sales/SalesOrders";
 import Invoices from "./pages/sales/Invoices";
 import SalesPayments from "./pages/sales/Payments";
+import SalesDashboard from "./pages/sales/SalesDashboard";
 import Suppliers from "./pages/purchases/Suppliers";
 import PurchaseOrders from "./pages/purchases/PurchaseOrders";
 import Bills from "./pages/purchases/Bills";
 import PurchasePayments from "./pages/purchases/Payments";
+import PurchasesDashboard from "./pages/purchases/PurchasesDashboard";
+import InventoryDashboard from "./pages/inventory/InventoryDashboard";
+import Warehouses from "./pages/inventory/Warehouses";
+import InventoryStock from "./pages/inventory/InventoryStock";
+import StockTransfers from "./pages/inventory/StockTransfers";
+import StockOpname from "./pages/inventory/StockOpname";
 import JournalEntries from "./pages/JournalEntries";
 import ProfitLoss from "./pages/reports/ProfitLoss";
 import BalanceSheet from "./pages/reports/BalanceSheet";
@@ -50,14 +57,25 @@ const App = () => (
                 <Route path="/accounts" element={<ChartOfAccounts />} />
                 <Route path="/cash-bank" element={<CashBank />} />
                 <Route path="/products" element={<Products />} />
+                {/* Sales Routes */}
+                <Route path="/sales/dashboard" element={<SalesDashboard />} />
                 <Route path="/sales/customers" element={<Customers />} />
                 <Route path="/sales/orders" element={<SalesOrders />} />
                 <Route path="/sales/invoices" element={<Invoices />} />
                 <Route path="/sales/payments" element={<SalesPayments />} />
+                {/* Purchases Routes */}
+                <Route path="/purchases/dashboard" element={<PurchasesDashboard />} />
                 <Route path="/purchases/suppliers" element={<Suppliers />} />
                 <Route path="/purchases/orders" element={<PurchaseOrders />} />
                 <Route path="/purchases/bills" element={<Bills />} />
                 <Route path="/purchases/payments" element={<PurchasePayments />} />
+                {/* Inventory Routes */}
+                <Route path="/inventory/dashboard" element={<InventoryDashboard />} />
+                <Route path="/inventory/warehouses" element={<Warehouses />} />
+                <Route path="/inventory/stock" element={<InventoryStock />} />
+                <Route path="/inventory/transfers" element={<StockTransfers />} />
+                <Route path="/inventory/opname" element={<StockOpname />} />
+                {/* Journal & Financial Reports */}
                 <Route path="/journal" element={<JournalEntries />} />
                 <Route path="/reports/profit-loss" element={<ProfitLoss />} />
                 <Route path="/reports/balance-sheet" element={<BalanceSheet />} />
@@ -65,6 +83,7 @@ const App = () => (
                 <Route path="/reports/trial-balance" element={<TrialBalance />} />
                 <Route path="/reports/aged-receivables" element={<AgedReceivables />} />
                 <Route path="/reports/aged-payables" element={<AgedPayables />} />
+                {/* Settings */}
                 <Route path="/settings/users" element={<Users />} />
                 <Route path="/settings/companies" element={<Companies />} />
               </Route>
