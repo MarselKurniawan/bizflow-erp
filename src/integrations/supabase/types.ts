@@ -314,6 +314,99 @@ export type Database = {
           },
         ]
       }
+      goods_receipt_items: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          quantity_ordered: number
+          quantity_received: number
+          receipt_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          quantity_ordered?: number
+          quantity_received?: number
+          receipt_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          quantity_ordered?: number
+          quantity_received?: number
+          receipt_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goods_receipt_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_receipt_items_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "goods_receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goods_receipts: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          purchase_order_id: string
+          receipt_date: string
+          receipt_number: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          purchase_order_id: string
+          receipt_date?: string
+          receipt_number: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          purchase_order_id?: string
+          receipt_date?: string
+          receipt_number?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goods_receipts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_receipts_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_stock: {
         Row: {
           created_at: string
@@ -1482,7 +1575,13 @@ export type Database = {
         | "overdue"
         | "cancelled"
       opname_status: "draft" | "in_progress" | "completed"
-      order_status: "draft" | "confirmed" | "invoiced" | "paid" | "cancelled"
+      order_status:
+        | "draft"
+        | "confirmed"
+        | "received"
+        | "invoiced"
+        | "paid"
+        | "cancelled"
       payment_type: "incoming" | "outgoing"
       product_type: "stockable" | "service" | "raw_material"
       transfer_status:
@@ -1636,7 +1735,14 @@ export const Constants = {
         "cancelled",
       ],
       opname_status: ["draft", "in_progress", "completed"],
-      order_status: ["draft", "confirmed", "invoiced", "paid", "cancelled"],
+      order_status: [
+        "draft",
+        "confirmed",
+        "received",
+        "invoiced",
+        "paid",
+        "cancelled",
+      ],
       payment_type: ["incoming", "outgoing"],
       product_type: ["stockable", "service", "raw_material"],
       transfer_status: [
