@@ -188,8 +188,8 @@ export const Sidebar: React.FC = () => {
                     isActive && 'active'
                   )}
                 >
-                  <item.icon className="w-5 h-5" />
-                  <span className="text-sm font-medium">{item.label}</span>
+                  <item.icon className="w-4 h-4" />
+                  <span className="text-xs font-medium">{item.label}</span>
                 </NavLink>
               ) : (
                 <>
@@ -200,8 +200,8 @@ export const Sidebar: React.FC = () => {
                       isActive(undefined, item.children) && 'text-sidebar-foreground'
                     )}
                   >
-                    <item.icon className="w-5 h-5" />
-                    <span className="text-sm font-medium flex-1 text-left">{item.label}</span>
+                    <item.icon className="w-4 h-4" />
+                    <span className="text-xs font-medium flex-1 text-left">{item.label}</span>
                     {expandedItems.includes(item.label) ? (
                       <ChevronDown className="w-4 h-4" />
                     ) : (
@@ -215,7 +215,7 @@ export const Sidebar: React.FC = () => {
                           <NavLink
                             to={child.path}
                             className={({ isActive }) => cn(
-                              'sidebar-item text-sm',
+                              'sidebar-item text-xs',
                               isActive && 'active'
                             )}
                           >
@@ -253,8 +253,8 @@ export const Sidebar: React.FC = () => {
           onClick={signOut}
           className="sidebar-item w-full text-destructive hover:bg-destructive/10"
         >
-          <LogOut className="w-5 h-5" />
-          <span className="text-sm font-medium">Sign Out</span>
+          <LogOut className="w-4 h-4" />
+          <span className="text-xs font-medium">Sign Out</span>
         </button>
       </div>
     </aside>
