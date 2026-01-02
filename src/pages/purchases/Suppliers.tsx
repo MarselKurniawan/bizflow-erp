@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, Building2, Mail, Phone, MapPin } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Building2, Mail, Phone, Package } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAccounts } from '@/hooks/useAccounts';
@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { ProductSuppliersDialog } from '@/components/suppliers/ProductSuppliersDialog';
 
 interface Supplier {
   id: string;
@@ -30,6 +31,10 @@ export const Suppliers: React.FC = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [formData, setFormData] = useState({ code: '', name: '', email: '', phone: '', address: '', payable_account_id: '' });
+  
+  // Product suppliers dialog state
+  const [productSuppliersOpen, setProductSuppliersOpen] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
 
   const fetchSuppliers = async () => {
     if (!selectedCompany) return;
@@ -68,6 +73,11 @@ export const Suppliers: React.FC = () => {
     if (!confirm('Delete this supplier?')) return;
     const { error } = await supabase.from('suppliers').delete().eq('id', id);
     if (!error) { toast.success('Supplier deleted'); fetchSuppliers(); }
+  };
+
+  const openProductSuppliers = (supplier: Supplier) => {
+    setSelectedSupplier(supplier);
+    setProductSuppliersOpen(true);
   };
 
   const filteredSuppliers = suppliers.filter(s => s.code.toLowerCase().includes(searchQuery.toLowerCase()) || s.name.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -123,6 +133,9 @@ export const Suppliers: React.FC = () => {
                 <div className="flex justify-between mb-4">
                   <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center"><Building2 className="w-6 h-6 text-accent" /></div>
                   <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => openProductSuppliers(supplier)} title="Produk Supplier">
+                      <Package className="w-4 h-4" />
+                    </Button>
                     <Button variant="ghost" size="sm" onClick={() => handleEdit(supplier)}><Edit2 className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="sm" onClick={() => handleDelete(supplier.id)} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
                   </div>
@@ -137,6 +150,16 @@ export const Suppliers: React.FC = () => {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Product Suppliers Dialog */}
+      {selectedSupplier && (
+        <ProductSuppliersDialog
+          open={productSuppliersOpen}
+          onOpenChange={setProductSuppliersOpen}
+          supplierId={selectedSupplier.id}
+          supplierName={selectedSupplier.name}
+        />
       )}
     </div>
   );
