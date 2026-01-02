@@ -26,6 +26,7 @@ import PurchasePayments from "./pages/purchases/Payments";
 import PurchasesDashboard from "./pages/purchases/PurchasesDashboard";
 import InventoryDashboard from "./pages/inventory/InventoryDashboard";
 import Materials from "./pages/inventory/Materials";
+import Recipes from "./pages/inventory/Recipes";
 import Warehouses from "./pages/inventory/Warehouses";
 import InventoryStock from "./pages/inventory/InventoryStock";
 import StockTransfers from "./pages/inventory/StockTransfers";
