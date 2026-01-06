@@ -12,20 +12,14 @@ const loginSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
-const signupSchema = loginSchema.extend({
-  fullName: z.string().min(2, 'Name must be at least 2 characters'),
-});
-
 export const Auth: React.FC = () => {
-  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const { signIn, signUp, user, isLoading: authLoading } = useAuth();
+  const { signIn, user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -35,11 +29,8 @@ export const Auth: React.FC = () => {
   }, [user, authLoading, navigate]);
 
   const validateForm = () => {
-    const schema = isLogin ? loginSchema : signupSchema;
-    const data = isLogin ? { email, password } : { email, password, fullName };
-    
     try {
-      schema.parse(data);
+      loginSchema.parse({ email, password });
       setErrors({});
       return true;
     } catch (err) {
@@ -64,30 +55,16 @@ export const Auth: React.FC = () => {
     setIsLoading(true);
 
     try {
-      if (isLogin) {
-        const { error } = await signIn(email, password);
-        if (error) {
-          if (error.message.includes('Invalid login credentials')) {
-            toast.error('Email or password is incorrect');
-          } else {
-            toast.error(error.message);
-          }
+      const { error } = await signIn(email, password);
+      if (error) {
+        if (error.message.includes('Invalid login credentials')) {
+          toast.error('Email atau password salah');
         } else {
-          toast.success('Welcome back!');
-          navigate('/select-company');
+          toast.error(error.message);
         }
       } else {
-        const { error } = await signUp(email, password, fullName);
-        if (error) {
-          if (error.message.includes('already registered')) {
-            toast.error('This email is already registered');
-          } else {
-            toast.error(error.message);
-          }
-        } else {
-          toast.success('Account created successfully!');
-          navigate('/select-company');
-        }
+        toast.success('Selamat datang!');
+        navigate('/select-company');
       }
     } finally {
       setIsLoading(false);
@@ -117,7 +94,7 @@ export const Auth: React.FC = () => {
             IarPhi
           </h1>
           <p className="text-xl text-primary-foreground/80 max-w-md">
-            Manage your business operations efficiently with our comprehensive enterprise resource planning solution.
+            Kelola operasional bisnis Anda secara efisien dengan solusi ERP yang komprehensif.
           </p>
           
           <div className="mt-12 space-y-4">
@@ -127,7 +104,7 @@ export const Auth: React.FC = () => {
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
               </div>
-              <span>Complete Financial Management</span>
+              <span>Manajemen Keuangan Lengkap</span>
             </div>
             <div className="flex items-center gap-3 text-primary-foreground/90">
               <div className="w-8 h-8 rounded-lg bg-primary-foreground/10 flex items-center justify-center">
@@ -135,7 +112,7 @@ export const Auth: React.FC = () => {
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
               </div>
-              <span>Inventory & Product Tracking</span>
+              <span>Tracking Inventaris & Produk</span>
             </div>
             <div className="flex items-center gap-3 text-primary-foreground/90">
               <div className="w-8 h-8 rounded-lg bg-primary-foreground/10 flex items-center justify-center">
@@ -143,7 +120,7 @@ export const Auth: React.FC = () => {
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
               </div>
-              <span>Sales & Purchase Management</span>
+              <span>Manajemen Penjualan & Pembelian</span>
             </div>
             <div className="flex items-center gap-3 text-primary-foreground/90">
               <div className="w-8 h-8 rounded-lg bg-primary-foreground/10 flex items-center justify-center">
@@ -151,13 +128,13 @@ export const Auth: React.FC = () => {
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
               </div>
-              <span>Comprehensive Reporting</span>
+              <span>Laporan Komprehensif</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Right Panel - Form */}
+      {/* Right Panel - Login Form */}
       <div className="flex-1 flex items-center justify-center px-6 py-12 lg:px-8 bg-background">
         <div className="w-full max-w-md animate-fade-in">
           {/* Mobile Logo */}
@@ -170,37 +147,16 @@ export const Auth: React.FC = () => {
 
           <div className="text-center mb-8">
             <h2 className="text-2xl font-heading font-semibold text-foreground">
-              {isLogin ? 'Welcome back' : 'Create your account'}
+              Selamat Datang
             </h2>
             <p className="mt-2 text-muted-foreground">
-              {isLogin 
-                ? 'Sign in to access your dashboard' 
-                : 'Start managing your business today'}
+              Masuk untuk mengakses dashboard Anda
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {!isLogin && (
-              <div>
-                <label className="form-label">Full Name</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="pl-10 input-field"
-                    placeholder="Enter your full name"
-                  />
-                </div>
-                {errors.fullName && (
-                  <p className="text-sm text-destructive mt-1">{errors.fullName}</p>
-                )}
-              </div>
-            )}
-
             <div>
-              <label className="form-label">Email Address</label>
+              <label className="form-label">Email</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
@@ -208,7 +164,7 @@ export const Auth: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10 input-field"
-                  placeholder="Enter your email"
+                  placeholder="Masukkan email Anda"
                 />
               </div>
               {errors.email && (
@@ -225,7 +181,7 @@ export const Auth: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10 input-field"
-                  placeholder="Enter your password"
+                  placeholder="Masukkan password Anda"
                 />
                 <button
                   type="button"
@@ -248,27 +204,17 @@ export const Auth: React.FC = () => {
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  {isLogin ? 'Signing in...' : 'Creating account...'}
+                  Masuk...
                 </>
               ) : (
-                isLogin ? 'Sign In' : 'Create Account'
+                'Masuk'
               )}
             </Button>
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-muted-foreground">
-              {isLogin ? "Don't have an account?" : "Already have an account?"}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setErrors({});
-                }}
-                className="ml-2 text-primary font-medium hover:underline"
-              >
-                {isLogin ? 'Sign up' : 'Sign in'}
-              </button>
+            <p className="text-sm text-muted-foreground">
+              Hubungi admin jika Anda belum memiliki akun
             </p>
           </div>
         </div>
