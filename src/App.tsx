@@ -44,6 +44,8 @@ import PurchaseReport from "./pages/reports/PurchaseReport";
 import InventoryReport from "./pages/reports/InventoryReport";
 import Users from "./pages/settings/Users";
 import Companies from "./pages/settings/Companies";
+import PeriodClosing from "./pages/accounting/PeriodClosing";
+import TransactionTags from "./pages/accounting/TransactionTags";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -86,8 +88,12 @@ const App = () => (
                 <Route path="/inventory/stock" element={<InventoryStock />} />
                 <Route path="/inventory/transfers" element={<StockTransfers />} />
                 <Route path="/inventory/opname" element={<StockOpname />} />
+                <Route path="/inventory/recipes" element={<Recipes />} />
                 {/* Journal & Reports */}
                 <Route path="/journal" element={<JournalEntries />} />
+                {/* Accounting */}
+                <Route path="/accounting/period-closing" element={<PeriodClosing />} />
+                <Route path="/accounting/tags" element={<TransactionTags />} />
                 <Route path="/reports/profit-loss" element={<ProfitLoss />} />
                 <Route path="/reports/balance-sheet" element={<BalanceSheet />} />
                 <Route path="/reports/general-ledger" element={<GeneralLedger />} />

@@ -623,6 +623,97 @@ export type Database = {
           },
         ]
       }
+      journal_entry_tags: {
+        Row: {
+          created_at: string
+          id: string
+          journal_entry_id: string
+          tag_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          journal_entry_id: string
+          tag_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          journal_entry_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_entry_tags_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entry_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      opening_balances: {
+        Row: {
+          account_id: string
+          balance_date: string
+          company_id: string
+          created_at: string
+          credit_balance: number | null
+          debit_balance: number | null
+          id: string
+          period_closing_id: string | null
+        }
+        Insert: {
+          account_id: string
+          balance_date: string
+          company_id: string
+          created_at?: string
+          credit_balance?: number | null
+          debit_balance?: number | null
+          id?: string
+          period_closing_id?: string | null
+        }
+        Update: {
+          account_id?: string
+          balance_date?: string
+          company_id?: string
+          created_at?: string
+          credit_balance?: number | null
+          debit_balance?: number | null
+          id?: string
+          period_closing_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opening_balances_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opening_balances_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opening_balances_period_closing_id_fkey"
+            columns: ["period_closing_id"]
+            isOneToOne: false
+            referencedRelation: "period_closings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_allocations: {
         Row: {
           amount: number
@@ -742,6 +833,50 @@ export type Database = {
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      period_closings: {
+        Row: {
+          closed_at: string
+          closed_by: string | null
+          company_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          period_end: string
+          period_start: string
+          status: string | null
+        }
+        Insert: {
+          closed_at?: string
+          closed_by?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          period_end: string
+          period_start: string
+          status?: string | null
+        }
+        Update: {
+          closed_at?: string
+          closed_by?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          period_end?: string
+          period_start?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "period_closings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -1523,6 +1658,44 @@ export type Database = {
             columns: ["payable_account_id"]
             isOneToOne: false
             referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transaction_tags: {
+        Row: {
+          category: string
+          color: string | null
+          company_id: string
+          created_at: string
+          id: string
+          is_system: boolean | null
+          name: string
+        }
+        Insert: {
+          category?: string
+          color?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          is_system?: boolean | null
+          name: string
+        }
+        Update: {
+          category?: string
+          color?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_system?: boolean | null
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_tags_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]

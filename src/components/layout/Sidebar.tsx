@@ -19,7 +19,9 @@ import {
   Warehouse,
   ArrowLeftRight,
   ClipboardCheck,
-  Boxes
+  Boxes,
+  Lock,
+  Tag
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -50,6 +52,7 @@ const menuItems: MenuItem[] = [
     children: [
       { label: 'Products (Sales)', path: '/products' },
       { label: 'Materials (Purchase)', path: '/inventory/materials' },
+      { label: 'Recipe / BOM', path: '/inventory/recipes' },
       { label: 'Stock per Warehouse', path: '/inventory/stock' },
       { label: 'Transfers', path: '/inventory/transfers' },
       { label: 'Stock Opname', path: '/inventory/opname' },
@@ -84,6 +87,14 @@ const menuItems: MenuItem[] = [
   { icon: Warehouse, label: 'Warehouses', path: '/inventory/warehouses' },
   { icon: FileText, label: 'Journal Entries', path: '/journal' },
   { 
+    icon: Lock, 
+    label: 'Accounting',
+    children: [
+      { label: 'Tutup Buku', path: '/accounting/period-closing' },
+      { label: 'Tag Transaksi', path: '/accounting/tags' },
+    ]
+  },
+  {
     icon: BarChart3, 
     label: 'Financial Reports',
     children: [
