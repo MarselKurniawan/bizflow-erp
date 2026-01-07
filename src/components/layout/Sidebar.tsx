@@ -21,7 +21,9 @@ import {
   ClipboardCheck,
   Boxes,
   Lock,
-  Tag
+  Tag,
+  Store,
+  Landmark
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -44,6 +46,14 @@ const menuItems: MenuItem[] = [
       { label: 'Overview', path: '/cash-bank' },
       { label: 'Cashflow', path: '/cash-bank/cashflow' },
       { label: 'Cashflow Report', path: '/reports/cashflow' },
+    ]
+  },
+  { 
+    icon: Store, 
+    label: 'POS',
+    children: [
+      { label: 'Kasir', path: '/pos' },
+      { label: 'Riwayat Transaksi', path: '/pos/transactions' },
     ]
   },
   { 
@@ -84,6 +94,7 @@ const menuItems: MenuItem[] = [
       { label: 'Purchase Report', path: '/reports/purchases' },
     ]
   },
+  { icon: Landmark, label: 'Aset Tetap', path: '/assets' },
   { icon: Warehouse, label: 'Warehouses', path: '/inventory/warehouses' },
   { icon: FileText, label: 'Journal Entries', path: '/journal' },
   { 
