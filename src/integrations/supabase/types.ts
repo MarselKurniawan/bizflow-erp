@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      asset_depreciations: {
+        Row: {
+          accumulated_total: number
+          amount: number
+          asset_id: string
+          created_at: string
+          depreciation_date: string
+          id: string
+          journal_entry_id: string | null
+        }
+        Insert: {
+          accumulated_total: number
+          amount: number
+          asset_id: string
+          created_at?: string
+          depreciation_date: string
+          id?: string
+          journal_entry_id?: string | null
+        }
+        Update: {
+          accumulated_total?: number
+          amount?: number
+          asset_id?: string
+          created_at?: string
+          depreciation_date?: string
+          id?: string
+          journal_entry_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_depreciations_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "fixed_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_depreciations_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bills: {
         Row: {
           bill_date: string
@@ -310,6 +355,101 @@ export type Database = {
             columns: ["sales_order_id"]
             isOneToOne: false
             referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fixed_assets: {
+        Row: {
+          accumulated_depreciation: number | null
+          accumulated_depreciation_account_id: string | null
+          asset_account_id: string | null
+          asset_code: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          current_value: number | null
+          depreciation_expense_account_id: string | null
+          depreciation_method: Database["public"]["Enums"]["depreciation_method"]
+          description: string | null
+          id: string
+          name: string
+          purchase_date: string
+          purchase_price: number
+          salvage_value: number | null
+          status: Database["public"]["Enums"]["asset_status"]
+          updated_at: string
+          useful_life_months: number
+        }
+        Insert: {
+          accumulated_depreciation?: number | null
+          accumulated_depreciation_account_id?: string | null
+          asset_account_id?: string | null
+          asset_code: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          current_value?: number | null
+          depreciation_expense_account_id?: string | null
+          depreciation_method?: Database["public"]["Enums"]["depreciation_method"]
+          description?: string | null
+          id?: string
+          name: string
+          purchase_date: string
+          purchase_price: number
+          salvage_value?: number | null
+          status?: Database["public"]["Enums"]["asset_status"]
+          updated_at?: string
+          useful_life_months: number
+        }
+        Update: {
+          accumulated_depreciation?: number | null
+          accumulated_depreciation_account_id?: string | null
+          asset_account_id?: string | null
+          asset_code?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          current_value?: number | null
+          depreciation_expense_account_id?: string | null
+          depreciation_method?: Database["public"]["Enums"]["depreciation_method"]
+          description?: string | null
+          id?: string
+          name?: string
+          purchase_date?: string
+          purchase_price?: number
+          salvage_value?: number | null
+          status?: Database["public"]["Enums"]["asset_status"]
+          updated_at?: string
+          useful_life_months?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fixed_assets_accumulated_depreciation_account_id_fkey"
+            columns: ["accumulated_depreciation_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixed_assets_asset_account_id_fkey"
+            columns: ["asset_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixed_assets_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixed_assets_depreciation_expense_account_id_fkey"
+            columns: ["depreciation_expense_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
             referencedColumns: ["id"]
           },
         ]
@@ -877,6 +1017,134 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_transaction_items: {
+        Row: {
+          cost_price: number
+          created_at: string
+          id: string
+          pos_transaction_id: string
+          product_id: string
+          quantity: number
+          total: number
+          unit_price: number
+        }
+        Insert: {
+          cost_price?: number
+          created_at?: string
+          id?: string
+          pos_transaction_id: string
+          product_id: string
+          quantity?: number
+          total: number
+          unit_price: number
+        }
+        Update: {
+          cost_price?: number
+          created_at?: string
+          id?: string
+          pos_transaction_id?: string
+          product_id?: string
+          quantity?: number
+          total?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_transaction_items_pos_transaction_id_fkey"
+            columns: ["pos_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "pos_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_transaction_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_transactions: {
+        Row: {
+          cash_account_id: string | null
+          cogs_account_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          revenue_account_id: string | null
+          subtotal: number | null
+          tax_amount: number | null
+          total_amount: number | null
+          total_cogs: number | null
+          transaction_date: string
+          transaction_number: string
+        }
+        Insert: {
+          cash_account_id?: string | null
+          cogs_account_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          revenue_account_id?: string | null
+          subtotal?: number | null
+          tax_amount?: number | null
+          total_amount?: number | null
+          total_cogs?: number | null
+          transaction_date?: string
+          transaction_number: string
+        }
+        Update: {
+          cash_account_id?: string | null
+          cogs_account_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          revenue_account_id?: string | null
+          subtotal?: number | null
+          tax_amount?: number | null
+          total_amount?: number | null
+          total_cogs?: number | null
+          transaction_date?: string
+          transaction_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_transactions_cash_account_id_fkey"
+            columns: ["cash_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_transactions_cogs_account_id_fkey"
+            columns: ["cogs_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_transactions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_transactions_revenue_account_id_fkey"
+            columns: ["revenue_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
             referencedColumns: ["id"]
           },
         ]
@@ -1823,6 +2091,8 @@ export type Database = {
         | "expense"
         | "cash_bank"
       app_role: "admin" | "user"
+      asset_status: "active" | "disposed" | "fully_depreciated"
+      depreciation_method: "straight_line" | "declining_balance"
       invoice_status:
         | "draft"
         | "sent"
@@ -1982,6 +2252,8 @@ export const Constants = {
         "cash_bank",
       ],
       app_role: ["admin", "user"],
+      asset_status: ["active", "disposed", "fully_depreciated"],
+      depreciation_method: ["straight_line", "declining_balance"],
       invoice_status: [
         "draft",
         "sent",
