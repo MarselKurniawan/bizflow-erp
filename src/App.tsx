@@ -48,6 +48,9 @@ import PeriodClosing from "./pages/accounting/PeriodClosing";
 import TransactionTags from "./pages/accounting/TransactionTags";
 import POSDashboard from "./pages/pos/POSDashboard";
 import POSTransactions from "./pages/pos/POSTransactions";
+import POSSettings from "./pages/pos/POSSettings";
+import POSCashClosing from "./pages/pos/POSCashClosing";
+import POSReports from "./pages/pos/POSReports";
 import FixedAssets from "./pages/assets/FixedAssets";
 import NotFound from "./pages/NotFound";
 
@@ -95,6 +98,9 @@ const App = () => (
                 {/* POS Routes */}
                 <Route path="/pos" element={<POSDashboard />} />
                 <Route path="/pos/transactions" element={<POSTransactions />} />
+                <Route path="/pos/settings" element={<POSSettings />} />
+                <Route path="/pos/cash-closing" element={<POSCashClosing />} />
+                <Route path="/pos/reports" element={<POSReports />} />
                 {/* Fixed Assets */}
                 <Route path="/assets" element={<FixedAssets />} />
                 {/* Journal & Reports */}

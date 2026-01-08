@@ -1021,34 +1021,144 @@ export type Database = {
           },
         ]
       }
+      pos_cash_sessions: {
+        Row: {
+          closed_at: string | null
+          closed_by: string | null
+          closing_balance: number | null
+          company_id: string
+          difference: number | null
+          expected_balance: number | null
+          id: string
+          notes: string | null
+          opened_at: string
+          opened_by: string | null
+          opening_balance: number
+          status: string
+        }
+        Insert: {
+          closed_at?: string | null
+          closed_by?: string | null
+          closing_balance?: number | null
+          company_id: string
+          difference?: number | null
+          expected_balance?: number | null
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opened_by?: string | null
+          opening_balance?: number
+          status?: string
+        }
+        Update: {
+          closed_at?: string | null
+          closed_by?: string | null
+          closing_balance?: number | null
+          company_id?: string
+          difference?: number | null
+          expected_balance?: number | null
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opened_by?: string | null
+          opening_balance?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_cash_sessions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_payment_methods: {
+        Row: {
+          account_id: string | null
+          code: string
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+        }
+        Insert: {
+          account_id?: string | null
+          code: string
+          company_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+        }
+        Update: {
+          account_id?: string | null
+          code?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_payment_methods_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_payment_methods_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pos_transaction_items: {
         Row: {
           cost_price: number
           created_at: string
+          discount_amount: number | null
+          discount_percent: number | null
           id: string
           pos_transaction_id: string
           product_id: string
           quantity: number
+          tax_amount: number | null
+          tax_percent: number | null
           total: number
           unit_price: number
         }
         Insert: {
           cost_price?: number
           created_at?: string
+          discount_amount?: number | null
+          discount_percent?: number | null
           id?: string
           pos_transaction_id: string
           product_id: string
           quantity?: number
+          tax_amount?: number | null
+          tax_percent?: number | null
           total: number
           unit_price: number
         }
         Update: {
           cost_price?: number
           created_at?: string
+          discount_amount?: number | null
+          discount_percent?: number | null
           id?: string
           pos_transaction_id?: string
           product_id?: string
           quantity?: number
+          tax_amount?: number | null
+          tax_percent?: number | null
           total?: number
           unit_price?: number
         }
@@ -1069,16 +1179,62 @@ export type Database = {
           },
         ]
       }
+      pos_transaction_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          payment_method_id: string | null
+          pos_transaction_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          payment_method_id?: string | null
+          pos_transaction_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          payment_method_id?: string | null
+          pos_transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_transaction_payments_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "pos_payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_transaction_payments_pos_transaction_id_fkey"
+            columns: ["pos_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "pos_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pos_transactions: {
         Row: {
+          amount_paid: number | null
           cash_account_id: string | null
+          cash_session_id: string | null
+          change_amount: number | null
           cogs_account_id: string | null
           company_id: string
           created_at: string
           created_by: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          discount_amount: number | null
           id: string
           notes: string | null
           revenue_account_id: string | null
+          status: string | null
           subtotal: number | null
           tax_amount: number | null
           total_amount: number | null
@@ -1087,14 +1243,21 @@ export type Database = {
           transaction_number: string
         }
         Insert: {
+          amount_paid?: number | null
           cash_account_id?: string | null
+          cash_session_id?: string | null
+          change_amount?: number | null
           cogs_account_id?: string | null
           company_id: string
           created_at?: string
           created_by?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          discount_amount?: number | null
           id?: string
           notes?: string | null
           revenue_account_id?: string | null
+          status?: string | null
           subtotal?: number | null
           tax_amount?: number | null
           total_amount?: number | null
@@ -1103,14 +1266,21 @@ export type Database = {
           transaction_number: string
         }
         Update: {
+          amount_paid?: number | null
           cash_account_id?: string | null
+          cash_session_id?: string | null
+          change_amount?: number | null
           cogs_account_id?: string | null
           company_id?: string
           created_at?: string
           created_by?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          discount_amount?: number | null
           id?: string
           notes?: string | null
           revenue_account_id?: string | null
+          status?: string | null
           subtotal?: number | null
           tax_amount?: number | null
           total_amount?: number | null
@@ -1124,6 +1294,13 @@ export type Database = {
             columns: ["cash_account_id"]
             isOneToOne: false
             referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_transactions_cash_session_id_fkey"
+            columns: ["cash_session_id"]
+            isOneToOne: false
+            referencedRelation: "pos_cash_sessions"
             referencedColumns: ["id"]
           },
           {
@@ -2090,7 +2267,7 @@ export type Database = {
         | "revenue"
         | "expense"
         | "cash_bank"
-      app_role: "admin" | "user"
+      app_role: "admin" | "user" | "cashier"
       asset_status: "active" | "disposed" | "fully_depreciated"
       depreciation_method: "straight_line" | "declining_balance"
       invoice_status:
@@ -2251,7 +2428,7 @@ export const Constants = {
         "expense",
         "cash_bank",
       ],
-      app_role: ["admin", "user"],
+      app_role: ["admin", "user", "cashier"],
       asset_status: ["active", "disposed", "fully_depreciated"],
       depreciation_method: ["straight_line", "declining_balance"],
       invoice_status: [
