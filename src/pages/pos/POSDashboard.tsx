@@ -1,56 +1,135 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProducts } from '@/hooks/useProducts';
-import { useAccounts } from '@/hooks/useAccounts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Minus, Plus, ShoppingCart, Trash2, Receipt, Search } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Minus, Plus, ShoppingCart, Trash2, Receipt, Search, Maximize, Minimize, Pause, Play, Printer, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/formatters';
+import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
 
 interface CartItem {
   product_id: string;
   name: string;
+  sku: string;
   quantity: number;
   unit_price: number;
   cost_price: number;
+  discount_percent: number;
+  tax_percent: number;
+  discount_amount: number;
+  tax_amount: number;
   total: number;
+}
+
+interface PaymentMethod {
+  id: string;
+  name: string;
+  code: string;
+  account_id: string | null;
+}
+
+interface PaymentEntry {
+  method_id: string;
+  method_name: string;
+  amount: number;
+}
+
+interface HeldTransaction {
+  id: string;
+  customer_name: string;
+  items: CartItem[];
+  created_at: Date;
+}
+
+interface CashSession {
+  id: string;
+  opening_balance: number;
+  status: string;
+  opened_at: string;
 }
 
 const POSDashboard = () => {
   const { selectedCompany } = useCompany();
   const { user } = useAuth();
   const { products } = useProducts();
-  const { getCashBankAccounts, getRevenueAccounts, getCogsAccounts } = useAccounts();
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [cashAccountId, setCashAccountId] = useState('');
-  const [revenueAccountId, setRevenueAccountId] = useState('');
-  const [cogsAccountId, setCogsAccountId] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  
+  // Payment methods
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [payments, setPayments] = useState<PaymentEntry[]>([]);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  
+  // Customer info
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  
+  // Tax
+  const [applyTax, setApplyTax] = useState(false);
+  const [taxRate, setTaxRate] = useState(11);
+  
+  // Held transactions
+  const [heldTransactions, setHeldTransactions] = useState<HeldTransaction[]>([]);
+  const [showHeldDialog, setShowHeldDialog] = useState(false);
+  
+  // Cash session
+  const [currentSession, setCurrentSession] = useState<CashSession | null>(null);
+  const [showOpenSessionDialog, setShowOpenSessionDialog] = useState(false);
+  const [openingBalance, setOpeningBalance] = useState('0');
+  
+  // Receipt
+  const [showReceiptDialog, setShowReceiptDialog] = useState(false);
+  const [lastTransaction, setLastTransaction] = useState<any>(null);
+  
+  const receiptRef = useRef<HTMLDivElement>(null);
 
-  const cashAccounts = getCashBankAccounts();
-  const revenueAccounts = getRevenueAccounts();
-  const cogsAccounts = getCogsAccounts();
-
-  // Set default accounts
+  // Fetch payment methods
   useEffect(() => {
-    if (cashAccounts.length > 0 && !cashAccountId) {
-      setCashAccountId(cashAccounts[0].id);
-    }
-    if (revenueAccounts.length > 0 && !revenueAccountId) {
-      setRevenueAccountId(revenueAccounts[0].id);
-    }
-    if (cogsAccounts.length > 0 && !cogsAccountId) {
-      setCogsAccountId(cogsAccounts[0].id);
-    }
-  }, [cashAccounts, revenueAccounts, cogsAccounts]);
+    const fetchPaymentMethods = async () => {
+      if (!selectedCompany) return;
+      const { data } = await supabase
+        .from('pos_payment_methods')
+        .select('*')
+        .eq('company_id', selectedCompany.id)
+        .eq('is_active', true);
+      
+      setPaymentMethods(data || []);
+    };
+    
+    const fetchCurrentSession = async () => {
+      if (!selectedCompany) return;
+      const { data } = await supabase
+        .from('pos_cash_sessions')
+        .select('*')
+        .eq('company_id', selectedCompany.id)
+        .eq('status', 'open')
+        .order('opened_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      setCurrentSession(data);
+      if (!data) {
+        setShowOpenSessionDialog(true);
+      }
+    };
+    
+    fetchPaymentMethods();
+    fetchCurrentSession();
+  }, [selectedCompany]);
 
   const filteredProducts = products.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -60,28 +139,52 @@ const POSDashboard = () => {
   const addToCart = (product: any) => {
     const existingItem = cart.find(item => item.product_id === product.id);
     if (existingItem) {
-      setCart(cart.map(item =>
-        item.product_id === product.id
-          ? { ...item, quantity: item.quantity + 1, total: (item.quantity + 1) * item.unit_price }
-          : item
-      ));
+      updateQuantity(product.id, 1);
     } else {
-      setCart([...cart, {
+      const newItem: CartItem = {
         product_id: product.id,
         name: product.name,
+        sku: product.sku,
         quantity: 1,
         unit_price: product.unit_price,
         cost_price: product.cost_price,
+        discount_percent: 0,
+        tax_percent: applyTax ? taxRate : 0,
+        discount_amount: 0,
+        tax_amount: 0,
         total: product.unit_price
-      }]);
+      };
+      recalculateItem(newItem);
+      setCart([...cart, newItem]);
     }
+  };
+
+  const recalculateItem = (item: CartItem) => {
+    const subtotal = item.quantity * item.unit_price;
+    item.discount_amount = subtotal * (item.discount_percent / 100);
+    const afterDiscount = subtotal - item.discount_amount;
+    item.tax_amount = afterDiscount * (item.tax_percent / 100);
+    item.total = afterDiscount + item.tax_amount;
   };
 
   const updateQuantity = (productId: string, delta: number) => {
     setCart(cart.map(item => {
       if (item.product_id === productId) {
         const newQty = Math.max(1, item.quantity + delta);
-        return { ...item, quantity: newQty, total: newQty * item.unit_price };
+        const updated = { ...item, quantity: newQty };
+        recalculateItem(updated);
+        return updated;
+      }
+      return item;
+    }));
+  };
+
+  const updateItemDiscount = (productId: string, discount: number) => {
+    setCart(cart.map(item => {
+      if (item.product_id === productId) {
+        const updated = { ...item, discount_percent: Math.min(100, Math.max(0, discount)) };
+        recalculateItem(updated);
+        return updated;
       }
       return item;
     }));
@@ -91,8 +194,60 @@ const POSDashboard = () => {
     setCart(cart.filter(item => item.product_id !== productId));
   };
 
-  const subtotal = cart.reduce((sum, item) => sum + item.total, 0);
+  const subtotal = cart.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+  const totalDiscount = cart.reduce((sum, item) => sum + item.discount_amount, 0);
+  const totalTax = cart.reduce((sum, item) => sum + item.tax_amount, 0);
+  const grandTotal = cart.reduce((sum, item) => sum + item.total, 0);
   const totalCogs = cart.reduce((sum, item) => sum + (item.cost_price * item.quantity), 0);
+  const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+  const changeAmount = totalPaid - grandTotal;
+
+  const openSession = async () => {
+    if (!selectedCompany) return;
+    
+    const { data, error } = await supabase
+      .from('pos_cash_sessions')
+      .insert({
+        company_id: selectedCompany.id,
+        opened_by: user?.id,
+        opening_balance: parseFloat(openingBalance) || 0
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      toast.error('Gagal membuka sesi kasir');
+      return;
+    }
+    
+    setCurrentSession(data);
+    setShowOpenSessionDialog(false);
+    toast.success('Sesi kasir dibuka');
+  };
+
+  const holdTransaction = () => {
+    if (cart.length === 0) return;
+    
+    const held: HeldTransaction = {
+      id: `HOLD-${Date.now()}`,
+      customer_name: customerName || 'Pelanggan',
+      items: [...cart],
+      created_at: new Date()
+    };
+    
+    setHeldTransactions([...heldTransactions, held]);
+    setCart([]);
+    setCustomerName('');
+    setCustomerPhone('');
+    toast.success('Transaksi ditahan');
+  };
+
+  const resumeTransaction = (held: HeldTransaction) => {
+    setCart(held.items);
+    setCustomerName(held.customer_name);
+    setHeldTransactions(heldTransactions.filter(h => h.id !== held.id));
+    setShowHeldDialog(false);
+  };
 
   const generateTransactionNumber = async () => {
     const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -103,16 +258,58 @@ const POSDashboard = () => {
     return `POS-${today}-${String((count || 0) + 1).padStart(4, '0')}`;
   };
 
+  const generateCustomerCode = () => {
+    const today = format(new Date(), 'yyyyMMdd');
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `CUST-${today}-${random}`;
+  };
+
+  const openPaymentDialog = () => {
+    if (cart.length === 0) {
+      toast.error('Keranjang kosong');
+      return;
+    }
+    if (!currentSession) {
+      toast.error('Buka sesi kasir terlebih dahulu');
+      setShowOpenSessionDialog(true);
+      return;
+    }
+    setPayments([]);
+    setShowPaymentDialog(true);
+  };
+
+  const addPayment = (method: PaymentMethod) => {
+    const remaining = grandTotal - totalPaid;
+    if (remaining <= 0) return;
+    
+    setPayments([...payments, {
+      method_id: method.id,
+      method_name: method.name,
+      amount: remaining
+    }]);
+  };
+
+  const updatePaymentAmount = (index: number, amount: number) => {
+    const updated = [...payments];
+    updated[index].amount = amount;
+    setPayments(updated);
+  };
+
+  const removePayment = (index: number) => {
+    setPayments(payments.filter((_, i) => i !== index));
+  };
+
   const processTransaction = async () => {
-    if (!selectedCompany || cart.length === 0) return;
-    if (!cashAccountId || !revenueAccountId) {
-      toast.error('Pilih akun kas dan pendapatan');
+    if (!selectedCompany || cart.length === 0 || !currentSession) return;
+    if (totalPaid < grandTotal) {
+      toast.error('Pembayaran kurang');
       return;
     }
 
     setIsProcessing(true);
     try {
       const transactionNumber = await generateTransactionNumber();
+      const displayCustomerName = customerName || generateCustomerCode();
 
       // Create POS transaction
       const { data: transaction, error: txError } = await supabase
@@ -120,12 +317,17 @@ const POSDashboard = () => {
         .insert({
           company_id: selectedCompany.id,
           transaction_number: transactionNumber,
-          subtotal,
-          total_amount: subtotal,
+          subtotal: subtotal,
+          tax_amount: totalTax,
+          total_amount: grandTotal,
           total_cogs: totalCogs,
-          cash_account_id: cashAccountId,
-          revenue_account_id: revenueAccountId,
-          cogs_account_id: cogsAccountId || null,
+          discount_amount: totalDiscount,
+          cash_session_id: currentSession.id,
+          customer_name: displayCustomerName,
+          customer_phone: customerPhone || null,
+          amount_paid: totalPaid,
+          change_amount: changeAmount,
+          status: 'completed',
           created_by: user?.id
         })
         .select()
@@ -140,6 +342,10 @@ const POSDashboard = () => {
         quantity: item.quantity,
         unit_price: item.unit_price,
         cost_price: item.cost_price,
+        discount_percent: item.discount_percent,
+        discount_amount: item.discount_amount,
+        tax_percent: item.tax_percent,
+        tax_amount: item.tax_amount,
         total: item.total
       }));
 
@@ -149,14 +355,27 @@ const POSDashboard = () => {
 
       if (itemsError) throw itemsError;
 
-      // Create journal entry for the sale
+      // Create transaction payments
+      const paymentRecords = payments.map(p => ({
+        pos_transaction_id: transaction.id,
+        payment_method_id: p.method_id,
+        amount: p.amount
+      }));
+
+      const { error: paymentsError } = await supabase
+        .from('pos_transaction_payments')
+        .insert(paymentRecords);
+
+      if (paymentsError) throw paymentsError;
+
+      // Create journal entry
       const journalNumber = `JV-POS-${transactionNumber}`;
       const { data: journalEntry, error: jeError } = await supabase
         .from('journal_entries')
         .insert({
           company_id: selectedCompany.id,
           entry_number: journalNumber,
-          description: `Penjualan POS ${transactionNumber}`,
+          description: `Penjualan POS ${transactionNumber} - ${displayCustomerName}`,
           reference_type: 'pos_transaction',
           reference_id: transaction.id,
           is_posted: true,
@@ -167,42 +386,101 @@ const POSDashboard = () => {
 
       if (jeError) throw jeError;
 
-      // Create journal lines: Debit Cash, Credit Revenue
-      const journalLines = [
-        { journal_entry_id: journalEntry.id, account_id: cashAccountId, debit_amount: subtotal, credit_amount: 0, description: 'Penerimaan kas POS' },
-        { journal_entry_id: journalEntry.id, account_id: revenueAccountId, debit_amount: 0, credit_amount: subtotal, description: 'Pendapatan penjualan' }
-      ];
+      // Create journal lines based on payment methods
+      const journalLines: any[] = [];
+      
+      // Debit each payment method's account
+      for (const payment of payments) {
+        const method = paymentMethods.find(m => m.id === payment.method_id);
+        if (method?.account_id) {
+          journalLines.push({
+            journal_entry_id: journalEntry.id,
+            account_id: method.account_id,
+            debit_amount: payment.amount,
+            credit_amount: 0,
+            description: `Penerimaan via ${method.name}`
+          });
+        }
+      }
 
-      // Add COGS entries if account is set
-      if (cogsAccountId && totalCogs > 0) {
-        // Find inventory account
+      // Credit revenue account - find first revenue account
+      const { data: revenueAccount } = await supabase
+        .from('chart_of_accounts')
+        .select('id')
+        .eq('company_id', selectedCompany.id)
+        .eq('account_type', 'revenue')
+        .limit(1)
+        .single();
+
+      if (revenueAccount) {
+        journalLines.push({
+          journal_entry_id: journalEntry.id,
+          account_id: revenueAccount.id,
+          debit_amount: 0,
+          credit_amount: grandTotal,
+          description: 'Pendapatan penjualan POS'
+        });
+      }
+
+      // COGS entries
+      if (totalCogs > 0) {
+        const { data: cogsAccount } = await supabase
+          .from('chart_of_accounts')
+          .select('id')
+          .eq('company_id', selectedCompany.id)
+          .eq('account_type', 'expense')
+          .ilike('name', '%hpp%')
+          .limit(1)
+          .single();
+
         const { data: inventoryAccount } = await supabase
           .from('chart_of_accounts')
           .select('id')
           .eq('company_id', selectedCompany.id)
           .eq('account_type', 'asset')
           .ilike('name', '%persediaan%')
+          .limit(1)
           .single();
 
-        journalLines.push(
-          { journal_entry_id: journalEntry.id, account_id: cogsAccountId, debit_amount: totalCogs, credit_amount: 0, description: 'HPP penjualan' }
-        );
-        
+        if (cogsAccount) {
+          journalLines.push({
+            journal_entry_id: journalEntry.id,
+            account_id: cogsAccount.id,
+            debit_amount: totalCogs,
+            credit_amount: 0,
+            description: 'HPP penjualan'
+          });
+        }
+
         if (inventoryAccount) {
-          journalLines.push(
-            { journal_entry_id: journalEntry.id, account_id: inventoryAccount.id, debit_amount: 0, credit_amount: totalCogs, description: 'Pengurangan persediaan' }
-          );
+          journalLines.push({
+            journal_entry_id: journalEntry.id,
+            account_id: inventoryAccount.id,
+            debit_amount: 0,
+            credit_amount: totalCogs,
+            description: 'Pengurangan persediaan'
+          });
         }
       }
 
-      const { error: linesError } = await supabase
-        .from('journal_entry_lines')
-        .insert(journalLines);
+      if (journalLines.length > 0) {
+        await supabase.from('journal_entry_lines').insert(journalLines);
+      }
 
-      if (linesError) throw linesError;
+      setLastTransaction({
+        ...transaction,
+        items: cart,
+        payments,
+        customer_name: displayCustomerName
+      });
 
-      toast.success(`Transaksi ${transactionNumber} berhasil diproses`);
+      toast.success(`Transaksi ${transactionNumber} berhasil`);
       setCart([]);
+      setPayments([]);
+      setCustomerName('');
+      setCustomerPhone('');
+      setShowPaymentDialog(false);
+      setShowReceiptDialog(true);
     } catch (error: any) {
       toast.error('Gagal memproses transaksi: ' + error.message);
     } finally {
@@ -210,11 +488,289 @@ const POSDashboard = () => {
     }
   };
 
+  const printReceipt = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow || !lastTransaction) return;
+
+    const receiptHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Struk ${lastTransaction.transaction_number}</title>
+        <style>
+          body { font-family: 'Courier New', monospace; font-size: 12px; width: 80mm; margin: 0 auto; padding: 10px; }
+          .center { text-align: center; }
+          .right { text-align: right; }
+          hr { border: none; border-top: 1px dashed #000; margin: 8px 0; }
+          table { width: 100%; border-collapse: collapse; }
+          td { padding: 2px 0; }
+          .bold { font-weight: bold; }
+          .large { font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="center">
+          <div class="bold large">${selectedCompany?.name}</div>
+          <div>${selectedCompany?.address || ''}</div>
+          <div>${selectedCompany?.phone || ''}</div>
+        </div>
+        <hr>
+        <div>No: ${lastTransaction.transaction_number}</div>
+        <div>Tgl: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: id })}</div>
+        <div>Kasir: ${user?.email}</div>
+        <div>Pelanggan: ${lastTransaction.customer_name}</div>
+        <hr>
+        <table>
+          ${lastTransaction.items.map((item: CartItem) => `
+            <tr>
+              <td colspan="2">${item.name}</td>
+            </tr>
+            <tr>
+              <td>${item.quantity} x ${formatCurrency(item.unit_price)}${item.discount_percent > 0 ? ` -${item.discount_percent}%` : ''}</td>
+              <td class="right">${formatCurrency(item.total)}</td>
+            </tr>
+          `).join('')}
+        </table>
+        <hr>
+        <table>
+          <tr><td>Subtotal</td><td class="right">${formatCurrency(subtotal)}</td></tr>
+          ${totalDiscount > 0 ? `<tr><td>Diskon</td><td class="right">-${formatCurrency(totalDiscount)}</td></tr>` : ''}
+          ${totalTax > 0 ? `<tr><td>Pajak</td><td class="right">${formatCurrency(totalTax)}</td></tr>` : ''}
+          <tr class="bold large"><td>TOTAL</td><td class="right">${formatCurrency(grandTotal)}</td></tr>
+        </table>
+        <hr>
+        <table>
+          ${lastTransaction.payments.map((p: PaymentEntry) => `
+            <tr><td>${p.method_name}</td><td class="right">${formatCurrency(p.amount)}</td></tr>
+          `).join('')}
+          <tr><td>Kembali</td><td class="right">${formatCurrency(changeAmount > 0 ? changeAmount : 0)}</td></tr>
+        </table>
+        <hr>
+        <div class="center">
+          <div>Terima kasih atas kunjungan Anda</div>
+          <div>Barang yang sudah dibeli tidak dapat dikembalikan</div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(receiptHtml);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  };
+
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
+  };
+
+  if (isFullscreen) {
+    return (
+      <div className="fixed inset-0 z-50 bg-background p-4 overflow-hidden">
+        <div className="h-full flex flex-col">
+          {/* Fullscreen Header */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <h1 className="text-2xl font-bold">Point of Sale</h1>
+              {currentSession && (
+                <Badge variant="outline" className="text-green-600 border-green-600">
+                  Sesi Aktif: {formatCurrency(currentSession.opening_balance)} (Saldo Awal)
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowHeldDialog(true)} disabled={heldTransactions.length === 0}>
+                <Pause className="h-4 w-4 mr-1" />
+                Ditahan ({heldTransactions.length})
+              </Button>
+              <Button variant="outline" size="icon" onClick={toggleFullscreen}>
+                <Minimize className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <div className="flex-1 grid grid-cols-3 gap-4 min-h-0">
+            {/* Products */}
+            <div className="col-span-2 flex flex-col min-h-0">
+              <div className="flex items-center gap-2 mb-4">
+                <Search className="h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Cari produk..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="flex-1"
+                  autoFocus
+                />
+              </div>
+              <div className="flex-1 grid grid-cols-4 gap-2 overflow-y-auto content-start">
+                {filteredProducts.map(product => (
+                  <Button
+                    key={product.id}
+                    variant="outline"
+                    className="h-auto py-3 px-3 flex flex-col items-start text-left"
+                    onClick={() => addToCart(product)}
+                  >
+                    <span className="font-medium text-sm truncate w-full">{product.name}</span>
+                    <span className="text-xs text-muted-foreground">{product.sku}</span>
+                    <span className="text-primary font-semibold text-sm">{formatCurrency(product.unit_price)}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Cart */}
+            <div className="flex flex-col min-h-0 border rounded-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-semibold flex items-center gap-2">
+                  <ShoppingCart className="h-5 w-5" />
+                  Keranjang ({cart.length})
+                </h2>
+              </div>
+
+              {/* Customer Info */}
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                <Input
+                  placeholder="Nama pelanggan"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="text-sm"
+                />
+                <Input
+                  placeholder="No. HP"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  className="text-sm"
+                />
+              </div>
+
+              {/* Tax Toggle */}
+              <div className="flex items-center gap-2 mb-4">
+                <Checkbox 
+                  id="tax" 
+                  checked={applyTax} 
+                  onCheckedChange={(checked) => {
+                    setApplyTax(checked as boolean);
+                    setCart(cart.map(item => {
+                      const updated = { ...item, tax_percent: checked ? taxRate : 0 };
+                      recalculateItem(updated);
+                      return updated;
+                    }));
+                  }}
+                />
+                <Label htmlFor="tax" className="text-sm">Pajak {taxRate}%</Label>
+              </div>
+
+              {/* Cart Items */}
+              <div className="flex-1 overflow-y-auto space-y-2 mb-4">
+                {cart.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">Keranjang kosong</p>
+                ) : (
+                  cart.map(item => (
+                    <div key={item.product_id} className="p-2 border rounded space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-sm truncate flex-1">{item.name}</span>
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeFromCart(item.product_id)}>
+                          <Trash2 className="h-3 w-3 text-destructive" />
+                        </Button>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1">
+                          <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => updateQuantity(item.product_id, -1)}>
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="w-8 text-center text-sm">{item.quantity}</span>
+                          <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => updateQuantity(item.product_id, 1)}>
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <Input
+                          type="number"
+                          placeholder="Diskon %"
+                          value={item.discount_percent || ''}
+                          onChange={(e) => updateItemDiscount(item.product_id, parseFloat(e.target.value) || 0)}
+                          className="w-16 h-6 text-xs text-center"
+                        />
+                        <span className="font-medium text-sm">{formatCurrency(item.total)}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Totals */}
+              <div className="border-t pt-4 space-y-1 mb-4">
+                <div className="flex justify-between text-sm">
+                  <span>Subtotal</span>
+                  <span>{formatCurrency(subtotal)}</span>
+                </div>
+                {totalDiscount > 0 && (
+                  <div className="flex justify-between text-sm text-red-600">
+                    <span>Diskon</span>
+                    <span>-{formatCurrency(totalDiscount)}</span>
+                  </div>
+                )}
+                {totalTax > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span>Pajak</span>
+                    <span>{formatCurrency(totalTax)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-lg font-bold">
+                  <span>Total</span>
+                  <span>{formatCurrency(grandTotal)}</span>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={holdTransaction} disabled={cart.length === 0}>
+                  <Pause className="h-4 w-4" />
+                </Button>
+                <Button className="flex-1" size="lg" onClick={openPaymentDialog} disabled={cart.length === 0}>
+                  <Receipt className="mr-2 h-5 w-5" />
+                  Bayar
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Dialogs remain the same */}
+        {renderDialogs()}
+      </div>
+    );
+  }
+
+  // Normal view
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Point of Sale</h1>
-        <p className="text-muted-foreground">Transaksi penjualan cepat</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Point of Sale</h1>
+          <p className="text-muted-foreground">Transaksi penjualan cepat</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {currentSession ? (
+            <Badge variant="outline" className="text-green-600 border-green-600">
+              Sesi Aktif
+            </Badge>
+          ) : (
+            <Button variant="outline" onClick={() => setShowOpenSessionDialog(true)}>
+              Buka Sesi Kasir
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => setShowHeldDialog(true)} disabled={heldTransactions.length === 0}>
+            <Pause className="h-4 w-4 mr-1" />
+            Ditahan ({heldTransactions.length})
+          </Button>
+          <Button variant="outline" size="icon" onClick={toggleFullscreen}>
+            <Maximize className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -249,56 +805,6 @@ const POSDashboard = () => {
               </div>
             </CardContent>
           </Card>
-
-          {/* Account Selection */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Pengaturan Akun</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Akun Kas/Bank</label>
-                  <Select value={cashAccountId} onValueChange={setCashAccountId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih akun kas" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cashAccounts.map(acc => (
-                        <SelectItem key={acc.id} value={acc.id}>{acc.code} - {acc.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Akun Pendapatan</label>
-                  <Select value={revenueAccountId} onValueChange={setRevenueAccountId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih akun pendapatan" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {revenueAccounts.map(acc => (
-                        <SelectItem key={acc.id} value={acc.id}>{acc.code} - {acc.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Akun HPP</label>
-                  <Select value={cogsAccountId} onValueChange={setCogsAccountId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih akun HPP" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cogsAccounts.map(acc => (
-                        <SelectItem key={acc.id} value={acc.id}>{acc.code} - {acc.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Cart */}
@@ -311,63 +817,281 @@ const POSDashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Customer Info */}
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  placeholder="Nama pelanggan"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                />
+                <Input
+                  placeholder="No. HP"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                />
+              </div>
+
+              {/* Tax Toggle */}
+              <div className="flex items-center gap-2">
+                <Checkbox 
+                  id="tax-normal" 
+                  checked={applyTax} 
+                  onCheckedChange={(checked) => {
+                    setApplyTax(checked as boolean);
+                    setCart(cart.map(item => {
+                      const updated = { ...item, tax_percent: checked ? taxRate : 0 };
+                      recalculateItem(updated);
+                      return updated;
+                    }));
+                  }}
+                />
+                <Label htmlFor="tax-normal">Pajak {taxRate}%</Label>
+              </div>
+
               {cart.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">Keranjang kosong</p>
               ) : (
                 <>
                   <div className="space-y-3 max-h-[300px] overflow-y-auto">
                     {cart.map(item => (
-                      <div key={item.product_id} className="flex items-center justify-between gap-2 p-2 border rounded-lg">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{item.name}</p>
-                          <p className="text-sm text-muted-foreground">{formatCurrency(item.unit_price)}</p>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => updateQuantity(item.product_id, -1)}>
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="w-8 text-center">{item.quantity}</span>
-                          <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => updateQuantity(item.product_id, 1)}>
-                            <Plus className="h-3 w-3" />
-                          </Button>
+                      <div key={item.product_id} className="p-2 border rounded-lg space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{item.name}</p>
+                            <p className="text-sm text-muted-foreground">{formatCurrency(item.unit_price)}</p>
+                          </div>
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeFromCart(item.product_id)}>
                             <Trash2 className="h-3 w-3" />
                           </Button>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1">
+                            <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => updateQuantity(item.product_id, -1)}>
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="w-8 text-center">{item.quantity}</span>
+                            <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => updateQuantity(item.product_id, 1)}>
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              placeholder="Diskon %"
+                              value={item.discount_percent || ''}
+                              onChange={(e) => updateItemDiscount(item.product_id, parseFloat(e.target.value) || 0)}
+                              className="w-20 h-7 text-sm"
+                            />
+                          </div>
+                          <span className="font-medium">{formatCurrency(item.total)}</span>
                         </div>
                       </div>
                     ))}
                   </div>
 
                   <div className="border-t pt-4 space-y-2">
-                    <div className="flex justify-between text-lg font-bold">
-                      <span>Total</span>
+                    <div className="flex justify-between text-sm">
+                      <span>Subtotal</span>
                       <span>{formatCurrency(subtotal)}</span>
                     </div>
-                    {totalCogs > 0 && (
-                      <div className="flex justify-between text-sm text-muted-foreground">
-                        <span>HPP</span>
-                        <span>{formatCurrency(totalCogs)}</span>
+                    {totalDiscount > 0 && (
+                      <div className="flex justify-between text-sm text-red-600">
+                        <span>Diskon</span>
+                        <span>-{formatCurrency(totalDiscount)}</span>
                       </div>
                     )}
+                    {totalTax > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span>Pajak</span>
+                        <span>{formatCurrency(totalTax)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-lg font-bold">
+                      <span>Total</span>
+                      <span>{formatCurrency(grandTotal)}</span>
+                    </div>
                   </div>
 
-                  <Button 
-                    className="w-full" 
-                    size="lg"
-                    onClick={processTransaction}
-                    disabled={isProcessing}
-                  >
-                    <Receipt className="mr-2 h-5 w-5" />
-                    {isProcessing ? 'Memproses...' : 'Proses Transaksi'}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={holdTransaction}>
+                      <Pause className="h-4 w-4" />
+                    </Button>
+                    <Button className="flex-1" size="lg" onClick={openPaymentDialog}>
+                      <Receipt className="mr-2 h-5 w-5" />
+                      Bayar
+                    </Button>
+                  </div>
                 </>
               )}
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {renderDialogs()}
     </div>
   );
+
+  function renderDialogs() {
+    return (
+      <>
+        {/* Open Session Dialog */}
+        <Dialog open={showOpenSessionDialog} onOpenChange={setShowOpenSessionDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Buka Sesi Kasir</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Saldo Awal (Kas di Laci)</Label>
+                <Input
+                  type="number"
+                  value={openingBalance}
+                  onChange={(e) => setOpeningBalance(e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={openSession}>Buka Sesi</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Payment Dialog */}
+        <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Pembayaran</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="text-center py-4 bg-muted rounded-lg">
+                <p className="text-sm text-muted-foreground">Total Tagihan</p>
+                <p className="text-3xl font-bold">{formatCurrency(grandTotal)}</p>
+              </div>
+
+              {/* Payment Methods */}
+              <div className="space-y-2">
+                <Label>Pilih Metode Pembayaran</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {paymentMethods.map(method => (
+                    <Button 
+                      key={method.id} 
+                      variant="outline" 
+                      onClick={() => addPayment(method)}
+                      disabled={totalPaid >= grandTotal}
+                    >
+                      {method.name}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Selected Payments */}
+              {payments.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Pembayaran</Label>
+                  {payments.map((payment, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <span className="text-sm flex-1">{payment.method_name}</span>
+                      <Input
+                        type="number"
+                        value={payment.amount}
+                        onChange={(e) => updatePaymentAmount(index, parseFloat(e.target.value) || 0)}
+                        className="w-32"
+                      />
+                      <Button size="icon" variant="ghost" onClick={() => removePayment(index)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Summary */}
+              <div className="border-t pt-4 space-y-2">
+                <div className="flex justify-between">
+                  <span>Total Dibayar</span>
+                  <span className="font-medium">{formatCurrency(totalPaid)}</span>
+                </div>
+                <div className="flex justify-between text-lg font-bold">
+                  <span>Kembalian</span>
+                  <span className={changeAmount >= 0 ? 'text-green-600' : 'text-red-600'}>
+                    {formatCurrency(Math.max(0, changeAmount))}
+                  </span>
+                </div>
+                {changeAmount < 0 && (
+                  <p className="text-sm text-red-600">Kurang: {formatCurrency(Math.abs(changeAmount))}</p>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>Batal</Button>
+              <Button onClick={processTransaction} disabled={isProcessing || totalPaid < grandTotal}>
+                {isProcessing ? 'Memproses...' : 'Proses Transaksi'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Held Transactions Dialog */}
+        <Dialog open={showHeldDialog} onOpenChange={setShowHeldDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Transaksi Ditahan</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2">
+              {heldTransactions.length === 0 ? (
+                <p className="text-center text-muted-foreground py-4">Tidak ada transaksi ditahan</p>
+              ) : (
+                heldTransactions.map(held => (
+                  <div key={held.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="font-medium">{held.customer_name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {held.items.length} item - {formatCurrency(held.items.reduce((s, i) => s + i.total, 0))}
+                      </p>
+                    </div>
+                    <Button onClick={() => resumeTransaction(held)}>
+                      <Play className="h-4 w-4 mr-1" />
+                      Lanjutkan
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Receipt Dialog */}
+        <Dialog open={showReceiptDialog} onOpenChange={setShowReceiptDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Transaksi Berhasil</DialogTitle>
+            </DialogHeader>
+            {lastTransaction && (
+              <div className="space-y-4">
+                <div className="text-center py-4 bg-green-50 rounded-lg">
+                  <p className="text-green-600 font-medium">{lastTransaction.transaction_number}</p>
+                  <p className="text-2xl font-bold">{formatCurrency(lastTransaction.total_amount)}</p>
+                  {lastTransaction.change_amount > 0 && (
+                    <p className="text-sm text-muted-foreground">Kembalian: {formatCurrency(lastTransaction.change_amount)}</p>
+                  )}
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowReceiptDialog(false)}>Tutup</Button>
+              <Button onClick={printReceipt}>
+                <Printer className="h-4 w-4 mr-2" />
+                Cetak Struk
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
 };
 
 export default POSDashboard;
