@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Minus, Plus, ShoppingCart, Trash2, Receipt, Search, Maximize, Minimize, Pause, Play, Printer, User } from 'lucide-react';
+import { Minus, Plus, ShoppingCart, Trash2, Receipt, Search, Maximize, Minimize, Pause, Play, Printer, User, ChefHat } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/formatters';
 import { format } from 'date-fns';
@@ -30,6 +30,8 @@ interface CartItem {
   discount_amount: number;
   tax_amount: number;
   total: number;
+  category_id?: string | null;
+  category_name?: string | null;
 }
 
 interface PaymentMethod {
@@ -57,6 +59,31 @@ interface CashSession {
   opening_balance: number;
   status: string;
   opened_at: string;
+}
+
+interface ReceiptSetting {
+  id: string;
+  receipt_type: string;
+  name: string;
+  logo_url: string | null;
+  header_text: string | null;
+  footer_text: string | null;
+  show_logo: boolean;
+  show_company_name: boolean;
+  show_company_address: boolean;
+  show_company_phone: boolean;
+  show_customer_info: boolean;
+  show_item_details: boolean;
+  show_payment_info: boolean;
+  paper_size: string;
+  is_active: boolean;
+}
+
+interface SplitRule {
+  id: string;
+  receipt_setting_id: string;
+  category_id: string | null;
+  category_name: string | null;
 }
 
 const POSDashboard = () => {
@@ -95,9 +122,13 @@ const POSDashboard = () => {
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
   const [lastTransaction, setLastTransaction] = useState<any>(null);
   
+  // Receipt settings
+  const [receiptSettings, setReceiptSettings] = useState<ReceiptSetting[]>([]);
+  const [splitRules, setSplitRules] = useState<SplitRule[]>([]);
+  
   const receiptRef = useRef<HTMLDivElement>(null);
 
-  // Fetch payment methods
+  // Fetch payment methods and receipt settings
   useEffect(() => {
     const fetchPaymentMethods = async () => {
       if (!selectedCompany) return;
@@ -126,9 +157,29 @@ const POSDashboard = () => {
         setShowOpenSessionDialog(true);
       }
     };
+
+    const fetchReceiptSettings = async () => {
+      if (!selectedCompany) return;
+      
+      const [settingsRes, rulesRes] = await Promise.all([
+        supabase
+          .from('receipt_settings')
+          .select('*')
+          .eq('company_id', selectedCompany.id)
+          .eq('is_active', true),
+        supabase
+          .from('receipt_split_rules')
+          .select('*')
+          .eq('company_id', selectedCompany.id)
+      ]);
+
+      setReceiptSettings(settingsRes.data || []);
+      setSplitRules(rulesRes.data || []);
+    };
     
     fetchPaymentMethods();
     fetchCurrentSession();
+    fetchReceiptSettings();
   }, [selectedCompany]);
 
   const filteredProducts = products.filter(p => 
@@ -152,7 +203,9 @@ const POSDashboard = () => {
         tax_percent: applyTax ? taxRate : 0,
         discount_amount: 0,
         tax_amount: 0,
-        total: product.unit_price
+        total: product.unit_price,
+        category_id: product.category_id,
+        category_name: product.category?.name || null
       };
       recalculateItem(newItem);
       setCart([...cart, newItem]);
@@ -488,7 +541,146 @@ const POSDashboard = () => {
     }
   };
 
-  const printReceipt = () => {
+  // Generate receipt HTML based on settings
+  const generateReceiptHtml = (setting: ReceiptSetting, items: CartItem[], transaction: any) => {
+    const paperWidth = setting.paper_size === '58mm' ? '58mm' : setting.paper_size === '80mm' ? '80mm' : '210mm';
+    const fontSize = setting.paper_size === '58mm' ? '10px' : '12px';
+    
+    const itemSubtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+    const itemDiscount = items.reduce((sum, item) => sum + item.discount_amount, 0);
+    const itemTax = items.reduce((sum, item) => sum + item.tax_amount, 0);
+    const itemTotal = items.reduce((sum, item) => sum + item.total, 0);
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${setting.name} - ${transaction.transaction_number}</title>
+        <style>
+          body { font-family: 'Courier New', monospace; font-size: ${fontSize}; width: ${paperWidth}; margin: 0 auto; padding: 10px; }
+          .center { text-align: center; }
+          .right { text-align: right; }
+          hr { border: none; border-top: 1px dashed #000; margin: 8px 0; }
+          table { width: 100%; border-collapse: collapse; }
+          td { padding: 2px 0; }
+          .bold { font-weight: bold; }
+          .large { font-size: ${setting.paper_size === '58mm' ? '12px' : '14px'}; }
+          .logo { max-height: 50px; max-width: 100px; margin-bottom: 5px; }
+          .kitchen-header { background: #000; color: #fff; padding: 5px; margin: -10px -10px 10px; }
+          @media print { body { margin: 0; } }
+        </style>
+      </head>
+      <body>
+        ${setting.receipt_type === 'kitchen' ? '<div class="kitchen-header center bold large">ORDER DAPUR</div>' : ''}
+        <div class="center">
+          ${setting.show_logo && setting.logo_url ? `<img src="${setting.logo_url}" class="logo" alt="Logo" />` : ''}
+          ${setting.show_company_name ? `<div class="bold large">${selectedCompany?.name}</div>` : ''}
+          ${setting.show_company_address && selectedCompany?.address ? `<div>${selectedCompany.address}</div>` : ''}
+          ${setting.show_company_phone && selectedCompany?.phone ? `<div>${selectedCompany.phone}</div>` : ''}
+          ${setting.header_text ? `<div style="white-space: pre-line; margin-top: 5px;">${setting.header_text}</div>` : ''}
+        </div>
+        <hr>
+        <div>No: ${transaction.transaction_number}</div>
+        <div>Tgl: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: id })}</div>
+        ${setting.show_customer_info ? `
+          <div>Kasir: ${user?.email}</div>
+          <div>Pelanggan: ${transaction.customer_name}</div>
+        ` : ''}
+        <hr>
+        ${setting.show_item_details ? `
+          <table>
+            ${items.map((item: CartItem) => `
+              <tr>
+                <td colspan="2"><strong>${item.name}</strong></td>
+              </tr>
+              <tr>
+                <td>${item.quantity} x ${formatCurrency(item.unit_price)}${item.discount_percent > 0 ? ` -${item.discount_percent}%` : ''}</td>
+                <td class="right">${formatCurrency(item.total)}</td>
+              </tr>
+            `).join('')}
+          </table>
+          <hr>
+          <table>
+            <tr><td>Subtotal</td><td class="right">${formatCurrency(itemSubtotal)}</td></tr>
+            ${itemDiscount > 0 ? `<tr><td>Diskon</td><td class="right">-${formatCurrency(itemDiscount)}</td></tr>` : ''}
+            ${itemTax > 0 ? `<tr><td>Pajak</td><td class="right">${formatCurrency(itemTax)}</td></tr>` : ''}
+            <tr class="bold large"><td>TOTAL</td><td class="right">${formatCurrency(itemTotal)}</td></tr>
+          </table>
+        ` : `
+          <div class="center bold">
+            <p>Item: ${items.length}</p>
+            <p class="large">Total: ${formatCurrency(itemTotal)}</p>
+          </div>
+        `}
+        ${setting.show_payment_info && transaction.payments ? `
+          <hr>
+          <table>
+            ${transaction.payments.map((p: PaymentEntry) => `
+              <tr><td>${p.method_name}</td><td class="right">${formatCurrency(p.amount)}</td></tr>
+            `).join('')}
+            <tr><td>Kembali</td><td class="right">${formatCurrency(Math.max(0, transaction.change_amount || 0))}</td></tr>
+          </table>
+        ` : ''}
+        ${setting.footer_text ? `
+          <hr>
+          <div class="center" style="white-space: pre-line;">${setting.footer_text}</div>
+        ` : ''}
+      </body>
+      </html>
+    `;
+  };
+
+  // Get items for a specific receipt setting based on split rules
+  const getItemsForReceipt = (setting: ReceiptSetting, allItems: CartItem[]) => {
+    const rules = splitRules.filter(r => r.receipt_setting_id === setting.id);
+    
+    // If no rules, return all items
+    if (rules.length === 0) {
+      return allItems;
+    }
+    
+    // Filter items by category
+    const categoryIds = rules.map(r => r.category_id).filter(Boolean);
+    return allItems.filter(item => categoryIds.includes(item.category_id || ''));
+  };
+
+  const printReceipt = (receiptType?: string) => {
+    if (!lastTransaction) return;
+
+    // Get active settings for the specified type or all active
+    let settingsToPrint = receiptSettings;
+    if (receiptType) {
+      settingsToPrint = receiptSettings.filter(s => s.receipt_type === receiptType);
+    }
+
+    if (settingsToPrint.length === 0) {
+      // Fallback to default print if no settings configured
+      printDefaultReceipt();
+      return;
+    }
+
+    // Print each receipt
+    settingsToPrint.forEach(setting => {
+      const items = getItemsForReceipt(setting, lastTransaction.items);
+      
+      // Skip if no items for this receipt
+      if (items.length === 0) return;
+      
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) return;
+
+      const receiptHtml = generateReceiptHtml(setting, items, lastTransaction);
+      printWindow.document.write(receiptHtml);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 250);
+    });
+  };
+
+  const printDefaultReceipt = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow || !lastTransaction) return;
 
@@ -561,6 +753,16 @@ const POSDashboard = () => {
       printWindow.print();
       printWindow.close();
     }, 250);
+  };
+
+  const printAllReceipts = () => {
+    // Print customer receipt
+    printReceipt('customer');
+    
+    // Print kitchen order after a short delay
+    setTimeout(() => {
+      printReceipt('kitchen');
+    }, 500);
   };
 
   const toggleFullscreen = () => {
@@ -1080,11 +1282,19 @@ const POSDashboard = () => {
                 </div>
               </div>
             )}
-            <DialogFooter>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
               <Button variant="outline" onClick={() => setShowReceiptDialog(false)}>Tutup</Button>
-              <Button onClick={printReceipt}>
+              <Button variant="outline" onClick={() => printReceipt('kitchen')}>
+                <ChefHat className="h-4 w-4 mr-2" />
+                Cetak Dapur
+              </Button>
+              <Button variant="outline" onClick={() => printReceipt('customer')}>
+                <Receipt className="h-4 w-4 mr-2" />
+                Cetak Nota
+              </Button>
+              <Button onClick={printAllReceipts}>
                 <Printer className="h-4 w-4 mr-2" />
-                Cetak Struk
+                Cetak Semua
               </Button>
             </DialogFooter>
           </DialogContent>
