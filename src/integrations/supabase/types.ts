@@ -1633,6 +1633,126 @@ export type Database = {
           },
         ]
       }
+      receipt_settings: {
+        Row: {
+          company_id: string
+          created_at: string
+          footer_text: string | null
+          header_text: string | null
+          id: string
+          is_active: boolean | null
+          logo_url: string | null
+          name: string
+          paper_size: string | null
+          receipt_type: string
+          show_company_address: boolean | null
+          show_company_name: boolean | null
+          show_company_phone: boolean | null
+          show_customer_info: boolean | null
+          show_item_details: boolean | null
+          show_logo: boolean | null
+          show_payment_info: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          footer_text?: string | null
+          header_text?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name: string
+          paper_size?: string | null
+          receipt_type?: string
+          show_company_address?: boolean | null
+          show_company_name?: boolean | null
+          show_company_phone?: boolean | null
+          show_customer_info?: boolean | null
+          show_item_details?: boolean | null
+          show_logo?: boolean | null
+          show_payment_info?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          footer_text?: string | null
+          header_text?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name?: string
+          paper_size?: string | null
+          receipt_type?: string
+          show_company_address?: boolean | null
+          show_company_name?: boolean | null
+          show_company_phone?: boolean | null
+          show_customer_info?: boolean | null
+          show_item_details?: boolean | null
+          show_logo?: boolean | null
+          show_payment_info?: boolean | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      receipt_split_rules: {
+        Row: {
+          category_id: string | null
+          category_name: string | null
+          company_id: string
+          created_at: string
+          id: string
+          receipt_setting_id: string
+        }
+        Insert: {
+          category_id?: string | null
+          category_name?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          receipt_setting_id: string
+        }
+        Update: {
+          category_id?: string | null
+          category_name?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          receipt_setting_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_split_rules_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_split_rules_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_split_rules_receipt_setting_id_fkey"
+            columns: ["receipt_setting_id"]
+            isOneToOne: false
+            referencedRelation: "receipt_settings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipe_items: {
         Row: {
           created_at: string
