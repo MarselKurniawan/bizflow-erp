@@ -539,27 +539,6 @@ const ReceiptSettings = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch
-                    checked={formData.show_company_name}
-                    onCheckedChange={(v) => setFormData({ ...formData, show_company_name: v })}
-                  />
-                  <Label>Nama Toko</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={formData.show_company_address}
-                    onCheckedChange={(v) => setFormData({ ...formData, show_company_address: v })}
-                  />
-                  <Label>Alamat</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={formData.show_company_phone}
-                    onCheckedChange={(v) => setFormData({ ...formData, show_company_phone: v })}
-                  />
-                  <Label>No. Telepon</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch
                     checked={formData.show_customer_info}
                     onCheckedChange={(v) => setFormData({ ...formData, show_customer_info: v })}
                   />
@@ -580,16 +559,19 @@ const ReceiptSettings = () => {
                   <Label>Info Pembayaran</Label>
                 </div>
               </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Nama toko dan alamat tidak ditampilkan. Gunakan Header untuk informasi toko.
+              </p>
             </TabsContent>
 
             <TabsContent value="content" className="space-y-4 mt-4">
               <div className="space-y-2">
-                <Label>Header Tambahan</Label>
+                <Label>Header (Nama Toko, Alamat, dll)</Label>
                 <Textarea
                   value={formData.header_text || ''}
                   onChange={(e) => setFormData({ ...formData, header_text: e.target.value })}
-                  placeholder="Teks tambahan di bawah info toko (opsional)"
-                  rows={2}
+                  placeholder="Contoh:\nNama Toko Anda\nJl. Contoh No. 123\nTelp: 08123456789"
+                  rows={4}
                 />
               </div>
               <div className="space-y-2">

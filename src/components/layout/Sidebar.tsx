@@ -57,6 +57,7 @@ const menuItems: MenuItem[] = [
       { label: 'Laporan POS', path: '/pos/reports' },
       { label: 'Penutupan Kas', path: '/pos/cash-closing' },
       { label: 'Metode Pembayaran', path: '/pos/settings' },
+      { label: 'Pengaturan Pajak', path: '/pos/tax-settings' },
       { label: 'Pengaturan Struk', path: '/pos/receipt-settings' },
     ]
   },
@@ -133,9 +134,9 @@ const menuItems: MenuItem[] = [
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
-  const { signOut, profile, isAdmin } = useAuth();
+  const { signOut, profile, isAdmin, isCashier } = useAuth();
   const { selectedCompany } = useCompany();
-  const [expandedItems, setExpandedItems] = useState<string[]>(['Sales', 'Purchases', 'Inventory', 'Financial Reports']);
+  const [expandedItems, setExpandedItems] = useState<string[]>(['Sales', 'Purchases', 'Inventory', 'Financial Reports', 'POS']);
 
   const toggleExpanded = (label: string) => {
     setExpandedItems(prev => 
@@ -198,11 +199,27 @@ export const Sidebar: React.FC = () => {
         <ul className="space-y-1">
           {menuItems
             .filter((item) => {
+              // Cashier can only see POS menu
+              if (isCashier) {
+                return item.label === 'POS';
+              }
               // Hide Settings menu for non-admin users
               if (item.label === 'Settings' && !isAdmin) {
                 return false;
               }
               return true;
+            })
+            .map((item) => {
+              // For cashier, filter POS children to only show Kasir and Riwayat Transaksi
+              if (isCashier && item.label === 'POS' && item.children) {
+                return {
+                  ...item,
+                  children: item.children.filter(child => 
+                    child.path === '/pos' || child.path === '/pos/transactions'
+                  )
+                };
+              }
+              return item;
             })
             .map((item) => (
             <li key={item.label}>
@@ -271,7 +288,7 @@ export const Sidebar: React.FC = () => {
               {profile?.full_name || 'User'}
             </p>
             <p className="text-xs text-sidebar-muted truncate">
-              {isAdmin ? 'Administrator' : 'User'}
+              {isAdmin ? 'Administrator' : isCashier ? 'Kasir' : 'User'}
             </p>
           </div>
         </div>

@@ -52,6 +52,7 @@ import POSSettings from "./pages/pos/POSSettings";
 import POSCashClosing from "./pages/pos/POSCashClosing";
 import POSReports from "./pages/pos/POSReports";
 import ReceiptSettings from "./pages/pos/ReceiptSettings";
+import TaxSettings from "./pages/pos/TaxSettings";
 import FixedAssets from "./pages/assets/FixedAssets";
 import NotFound from "./pages/NotFound";
 
@@ -103,6 +104,7 @@ const App = () => (
                 <Route path="/pos/cash-closing" element={<POSCashClosing />} />
                 <Route path="/pos/reports" element={<POSReports />} />
                 <Route path="/pos/receipt-settings" element={<ReceiptSettings />} />
+                <Route path="/pos/tax-settings" element={<TaxSettings />} />
                 {/* Fixed Assets */}
                 <Route path="/assets" element={<FixedAssets />} />
                 {/* Journal & Reports */}

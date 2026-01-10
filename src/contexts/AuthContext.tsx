@@ -8,6 +8,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   roles: AppRole[];
   isAdmin: boolean;
+  isCashier: boolean;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
@@ -122,6 +123,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         profile,
         roles,
         isAdmin: roles.includes('admin'),
+        isCashier: roles.includes('cashier'),
         isLoading,
         signIn,
         signUp,
