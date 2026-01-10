@@ -574,9 +574,6 @@ const POSDashboard = () => {
         ${setting.receipt_type === 'kitchen' ? '<div class="kitchen-header center bold large">ORDER DAPUR</div>' : ''}
         <div class="center">
           ${setting.show_logo && setting.logo_url ? `<img src="${setting.logo_url}" class="logo" alt="Logo" />` : ''}
-          ${setting.show_company_name ? `<div class="bold large">${selectedCompany?.name}</div>` : ''}
-          ${setting.show_company_address && selectedCompany?.address ? `<div>${selectedCompany.address}</div>` : ''}
-          ${setting.show_company_phone && selectedCompany?.phone ? `<div>${selectedCompany.phone}</div>` : ''}
           ${setting.header_text ? `<div style="white-space: pre-line; margin-top: 5px;">${setting.header_text}</div>` : ''}
         </div>
         <hr>

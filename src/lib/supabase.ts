@@ -3,7 +3,7 @@ import type { User, Session } from "@supabase/supabase-js";
 
 export { supabase };
 
-export type AppRole = 'admin' | 'user';
+export type AppRole = 'admin' | 'user' | 'cashier';
 
 export interface UserProfile {
   id: string;
