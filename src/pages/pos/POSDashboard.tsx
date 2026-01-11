@@ -47,6 +47,15 @@ interface PaymentEntry {
   amount: number;
 }
 
+interface TaxRate {
+  id: string;
+  name: string;
+  rate: number;
+  account_id: string | null;
+  is_default: boolean;
+  is_active: boolean;
+}
+
 interface HeldTransaction {
   id: string;
   customer_name: string;
@@ -106,8 +115,8 @@ const POSDashboard = () => {
   const [customerPhone, setCustomerPhone] = useState('');
   
   // Tax
-  const [applyTax, setApplyTax] = useState(false);
-  const [taxRate, setTaxRate] = useState(11);
+  const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
+  const [selectedTaxIds, setSelectedTaxIds] = useState<string[]>([]);
   
   // Held transactions
   const [heldTransactions, setHeldTransactions] = useState<HeldTransaction[]>([]);
@@ -176,11 +185,31 @@ const POSDashboard = () => {
       setReceiptSettings(settingsRes.data || []);
       setSplitRules(rulesRes.data || []);
     };
+
+    const fetchTaxRates = async () => {
+      if (!selectedCompany) return;
+      const { data } = await supabase
+        .from('pos_tax_rates')
+        .select('*')
+        .eq('company_id', selectedCompany.id)
+        .eq('is_active', true)
+        .order('name');
+      
+      setTaxRates(data || []);
+    };
     
     fetchPaymentMethods();
     fetchCurrentSession();
     fetchReceiptSettings();
+    fetchTaxRates();
   }, [selectedCompany]);
+
+  // Calculate total tax rate from selected taxes
+  const getTotalTaxRate = () => {
+    return taxRates
+      .filter(t => selectedTaxIds.includes(t.id))
+      .reduce((sum, t) => sum + t.rate, 0);
+  };
 
   const filteredProducts = products.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -192,6 +221,7 @@ const POSDashboard = () => {
     if (existingItem) {
       updateQuantity(product.id, 1);
     } else {
+      const totalTaxRate = getTotalTaxRate();
       const newItem: CartItem = {
         product_id: product.id,
         name: product.name,
@@ -200,7 +230,7 @@ const POSDashboard = () => {
         unit_price: product.unit_price,
         cost_price: product.cost_price,
         discount_percent: 0,
-        tax_percent: applyTax ? taxRate : 0,
+        tax_percent: totalTaxRate,
         discount_amount: 0,
         tax_amount: 0,
         total: product.unit_price,
@@ -210,6 +240,26 @@ const POSDashboard = () => {
       recalculateItem(newItem);
       setCart([...cart, newItem]);
     }
+  };
+
+  // Toggle tax selection and update cart
+  const toggleTaxSelection = (taxId: string) => {
+    const newSelectedIds = selectedTaxIds.includes(taxId)
+      ? selectedTaxIds.filter(id => id !== taxId)
+      : [...selectedTaxIds, taxId];
+    
+    setSelectedTaxIds(newSelectedIds);
+    
+    // Recalculate all cart items with new tax rate
+    const newTotalTaxRate = taxRates
+      .filter(t => newSelectedIds.includes(t.id))
+      .reduce((sum, t) => sum + t.rate, 0);
+    
+    setCart(cart.map(item => {
+      const updated = { ...item, tax_percent: newTotalTaxRate };
+      recalculateItem(updated);
+      return updated;
+    }));
   };
 
   const recalculateItem = (item: CartItem) => {
@@ -846,21 +896,25 @@ const POSDashboard = () => {
                 />
               </div>
 
-              {/* Tax Toggle */}
-              <div className="flex items-center gap-2 mb-4">
-                <Checkbox 
-                  id="tax" 
-                  checked={applyTax} 
-                  onCheckedChange={(checked) => {
-                    setApplyTax(checked as boolean);
-                    setCart(cart.map(item => {
-                      const updated = { ...item, tax_percent: checked ? taxRate : 0 };
-                      recalculateItem(updated);
-                      return updated;
-                    }));
-                  }}
-                />
-                <Label htmlFor="tax" className="text-sm">Pajak {taxRate}%</Label>
+              {/* Tax Selection */}
+              <div className="mb-4 space-y-1">
+                <Label className="text-xs text-muted-foreground">Pajak (opsional)</Label>
+                <div className="flex flex-wrap gap-2">
+                  {taxRates.length === 0 ? (
+                    <span className="text-xs text-muted-foreground">Belum ada pajak</span>
+                  ) : (
+                    taxRates.map(tax => (
+                      <Badge 
+                        key={tax.id}
+                        variant={selectedTaxIds.includes(tax.id) ? 'default' : 'outline'}
+                        className="cursor-pointer text-xs"
+                        onClick={() => toggleTaxSelection(tax.id)}
+                      >
+                        {tax.name}
+                      </Badge>
+                    ))
+                  )}
+                </div>
               </div>
 
               {/* Cart Items */}
@@ -1030,21 +1084,25 @@ const POSDashboard = () => {
                 />
               </div>
 
-              {/* Tax Toggle */}
-              <div className="flex items-center gap-2">
-                <Checkbox 
-                  id="tax-normal" 
-                  checked={applyTax} 
-                  onCheckedChange={(checked) => {
-                    setApplyTax(checked as boolean);
-                    setCart(cart.map(item => {
-                      const updated = { ...item, tax_percent: checked ? taxRate : 0 };
-                      recalculateItem(updated);
-                      return updated;
-                    }));
-                  }}
-                />
-                <Label htmlFor="tax-normal">Pajak {taxRate}%</Label>
+              {/* Tax Selection */}
+              <div className="space-y-1">
+                <Label className="text-sm text-muted-foreground">Pajak (opsional)</Label>
+                <div className="flex flex-wrap gap-2">
+                  {taxRates.length === 0 ? (
+                    <span className="text-sm text-muted-foreground">Belum ada pajak dikonfigurasi</span>
+                  ) : (
+                    taxRates.map(tax => (
+                      <Badge 
+                        key={tax.id}
+                        variant={selectedTaxIds.includes(tax.id) ? 'default' : 'outline'}
+                        className="cursor-pointer"
+                        onClick={() => toggleTaxSelection(tax.id)}
+                      >
+                        {tax.name}
+                      </Badge>
+                    ))
+                  )}
+                </div>
               </div>
 
               {cart.length === 0 ? (

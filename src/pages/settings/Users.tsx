@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Shield, User as UserIcon, Building2, Pencil, Eye, EyeOff } from 'lucide-react';
+import { Plus, Trash2, Shield, User as UserIcon, Building2, Pencil, Eye, EyeOff, Receipt } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -404,6 +404,12 @@ const Users: React.FC = () => {
                               User
                             </div>
                           </SelectItem>
+                          <SelectItem value="cashier">
+                            <div className="flex items-center gap-2">
+                              <Receipt className="w-4 h-4" />
+                              Kasir
+                            </div>
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>
@@ -537,6 +543,7 @@ const Users: React.FC = () => {
                 <SelectContent>
                   <SelectItem value="admin">Admin (All Companies)</SelectItem>
                   <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="cashier">Kasir (POS Only)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
