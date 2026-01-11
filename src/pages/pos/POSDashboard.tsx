@@ -297,13 +297,25 @@ const POSDashboard = () => {
     setCart(cart.filter(item => item.product_id !== productId));
   };
 
+  // Round down to nearest 100
+  const roundToHundred = (amount: number) => Math.floor(amount / 100) * 100;
+
   const subtotal = cart.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
   const totalDiscount = cart.reduce((sum, item) => sum + item.discount_amount, 0);
   const totalTax = cart.reduce((sum, item) => sum + item.tax_amount, 0);
-  const grandTotal = cart.reduce((sum, item) => sum + item.total, 0);
+  const grandTotalBeforeRounding = cart.reduce((sum, item) => sum + item.total, 0);
+  const roundingAmount = grandTotalBeforeRounding - roundToHundred(grandTotalBeforeRounding);
+  const grandTotal = roundToHundred(grandTotalBeforeRounding);
   const totalCogs = cart.reduce((sum, item) => sum + (item.cost_price * item.quantity), 0);
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
   const changeAmount = totalPaid - grandTotal;
+  
+  // Get selected tax names for receipt display
+  const getSelectedTaxDisplay = () => {
+    const selected = taxRates.filter(t => selectedTaxIds.includes(t.id));
+    if (selected.length === 0) return '';
+    return selected.map(t => `${t.name} (${t.rate}%)`).join(', ');
+  };
 
   const openSession = async () => {
     if (!selectedCompany) return;
@@ -574,7 +586,9 @@ const POSDashboard = () => {
         ...transaction,
         items: cart,
         payments,
-        customer_name: displayCustomerName
+        customer_name: displayCustomerName,
+        selectedTaxDisplay: getSelectedTaxDisplay(),
+        roundingAmount: roundingAmount
       });
 
       toast.success(`Transaksi ${transactionNumber} berhasil`);
@@ -599,7 +613,11 @@ const POSDashboard = () => {
     const itemSubtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
     const itemDiscount = items.reduce((sum, item) => sum + item.discount_amount, 0);
     const itemTax = items.reduce((sum, item) => sum + item.tax_amount, 0);
-    const itemTotal = items.reduce((sum, item) => sum + item.total, 0);
+    const itemTotalBeforeRounding = items.reduce((sum, item) => sum + item.total, 0);
+    const itemRounding = itemTotalBeforeRounding - roundToHundred(itemTotalBeforeRounding);
+    const itemTotal = roundToHundred(itemTotalBeforeRounding);
+    
+    const taxDisplay = transaction.selectedTaxDisplay || '';
 
     return `
       <!DOCTYPE html>
@@ -650,7 +668,8 @@ const POSDashboard = () => {
           <table>
             <tr><td>Subtotal</td><td class="right">${formatCurrency(itemSubtotal)}</td></tr>
             ${itemDiscount > 0 ? `<tr><td>Diskon</td><td class="right">-${formatCurrency(itemDiscount)}</td></tr>` : ''}
-            ${itemTax > 0 ? `<tr><td>Pajak</td><td class="right">${formatCurrency(itemTax)}</td></tr>` : ''}
+            ${itemTax > 0 ? `<tr><td>Pajak${taxDisplay ? ` (${taxDisplay})` : ''}</td><td class="right">${formatCurrency(itemTax)}</td></tr>` : ''}
+            ${itemRounding > 0 ? `<tr><td>Pembulatan</td><td class="right">-${formatCurrency(itemRounding)}</td></tr>` : ''}
             <tr class="bold large"><td>TOTAL</td><td class="right">${formatCurrency(itemTotal)}</td></tr>
           </table>
         ` : `
@@ -731,6 +750,9 @@ const POSDashboard = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow || !lastTransaction) return;
 
+    const taxDisplay = lastTransaction.selectedTaxDisplay || '';
+    const txRoundingAmount = lastTransaction.roundingAmount || 0;
+
     const receiptHtml = `
       <!DOCTYPE html>
       <html>
@@ -774,7 +796,8 @@ const POSDashboard = () => {
         <table>
           <tr><td>Subtotal</td><td class="right">${formatCurrency(subtotal)}</td></tr>
           ${totalDiscount > 0 ? `<tr><td>Diskon</td><td class="right">-${formatCurrency(totalDiscount)}</td></tr>` : ''}
-          ${totalTax > 0 ? `<tr><td>Pajak</td><td class="right">${formatCurrency(totalTax)}</td></tr>` : ''}
+          ${totalTax > 0 ? `<tr><td>Pajak${taxDisplay ? ` (${taxDisplay})` : ''}</td><td class="right">${formatCurrency(totalTax)}</td></tr>` : ''}
+          ${txRoundingAmount > 0 ? `<tr><td>Pembulatan</td><td class="right">-${formatCurrency(txRoundingAmount)}</td></tr>` : ''}
           <tr class="bold large"><td>TOTAL</td><td class="right">${formatCurrency(grandTotal)}</td></tr>
         </table>
         <hr>
@@ -968,8 +991,14 @@ const POSDashboard = () => {
                 )}
                 {totalTax > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span>Pajak</span>
+                    <span>Pajak {getSelectedTaxDisplay() && `(${getSelectedTaxDisplay()})`}</span>
                     <span>{formatCurrency(totalTax)}</span>
+                  </div>
+                )}
+                {roundingAmount > 0 && (
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Pembulatan</span>
+                    <span>-{formatCurrency(roundingAmount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-lg font-bold">
@@ -1159,8 +1188,14 @@ const POSDashboard = () => {
                     )}
                     {totalTax > 0 && (
                       <div className="flex justify-between text-sm">
-                        <span>Pajak</span>
+                        <span>Pajak {getSelectedTaxDisplay() && `(${getSelectedTaxDisplay()})`}</span>
                         <span>{formatCurrency(totalTax)}</span>
+                      </div>
+                    )}
+                    {roundingAmount > 0 && (
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>Pembulatan</span>
+                        <span>-{formatCurrency(roundingAmount)}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-lg font-bold">
