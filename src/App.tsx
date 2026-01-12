@@ -44,6 +44,7 @@ import PurchaseReport from "./pages/reports/PurchaseReport";
 import InventoryReport from "./pages/reports/InventoryReport";
 import Users from "./pages/settings/Users";
 import Companies from "./pages/settings/Companies";
+import Profile from "./pages/settings/Profile";
 import PeriodClosing from "./pages/accounting/PeriodClosing";
 import TransactionTags from "./pages/accounting/TransactionTags";
 import POSDashboard from "./pages/pos/POSDashboard";
@@ -125,6 +126,7 @@ const App = () => (
                 {/* Settings */}
                 <Route path="/settings/users" element={<Users />} />
                 <Route path="/settings/companies" element={<Companies />} />
+                <Route path="/settings/profile" element={<Profile />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

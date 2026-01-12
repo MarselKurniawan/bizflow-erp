@@ -277,7 +277,10 @@ export const Sidebar: React.FC = () => {
 
       {/* User Section */}
       <div className="p-4 border-t border-sidebar-border">
-        <div className="flex items-center gap-3 mb-3">
+        <NavLink 
+          to="/settings/profile"
+          className="flex items-center gap-3 mb-3 p-2 rounded-lg hover:bg-sidebar-accent/50 transition-fast"
+        >
           <div className="w-10 h-10 rounded-full bg-sidebar-accent flex items-center justify-center">
             <span className="text-sm font-semibold text-sidebar-foreground">
               {profile?.full_name?.charAt(0) || profile?.email?.charAt(0) || 'U'}
@@ -291,7 +294,7 @@ export const Sidebar: React.FC = () => {
               {isAdmin ? 'Administrator' : isCashier ? 'Kasir' : 'User'}
             </p>
           </div>
-        </div>
+        </NavLink>
         <button
           onClick={signOut}
           className="sidebar-item w-full text-destructive hover:bg-destructive/10"

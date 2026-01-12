@@ -7,9 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { Search, Eye, Printer, FileSpreadsheet, FileText } from 'lucide-react';
+import { Search, Eye, Printer, FileSpreadsheet, FileText, ChevronDown, ChefHat, Receipt } from 'lucide-react';
 import { formatCurrency } from '@/lib/formatters';
 import { exportToExcel, exportToPDF, generatePDFTable } from '@/lib/exportUtils';
 
@@ -42,13 +43,34 @@ interface TransactionItem {
   tax_percent: number;
   tax_amount: number;
   total: number;
-  products?: { name: string; sku: string };
+  products?: { name: string; sku: string; category_id?: string };
 }
 
 interface TransactionPayment {
   id: string;
   amount: number;
   pos_payment_methods?: { name: string };
+}
+
+interface ReceiptSetting {
+  id: string;
+  receipt_type: string;
+  name: string;
+  logo_url: string | null;
+  header_text: string | null;
+  footer_text: string | null;
+  show_logo: boolean;
+  show_customer_info: boolean;
+  show_item_details: boolean;
+  show_payment_info: boolean;
+  paper_size: string;
+  is_active: boolean;
+}
+
+interface ReceiptSplitRule {
+  id: string;
+  receipt_setting_id: string;
+  category_id: string | null;
 }
 
 const POSTransactions = () => {
@@ -61,6 +83,8 @@ const POSTransactions = () => {
   const [transactionPayments, setTransactionPayments] = useState<TransactionPayment[]>([]);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [receiptSettings, setReceiptSettings] = useState<ReceiptSetting[]>([]);
+  const [splitRules, setSplitRules] = useState<ReceiptSplitRule[]>([]);
 
   const fetchTransactions = async () => {
     if (!selectedCompany) return;
@@ -87,11 +111,30 @@ const POSTransactions = () => {
     setIsLoading(false);
   };
 
+  const fetchReceiptSettings = async () => {
+    if (!selectedCompany) return;
+
+    const [settingsRes, rulesRes] = await Promise.all([
+      supabase
+        .from('receipt_settings')
+        .select('*')
+        .eq('company_id', selectedCompany.id)
+        .eq('is_active', true),
+      supabase
+        .from('receipt_split_rules')
+        .select('*')
+        .eq('company_id', selectedCompany.id)
+    ]);
+
+    setReceiptSettings(settingsRes.data || []);
+    setSplitRules(rulesRes.data || []);
+  };
+
   const fetchTransactionDetails = async (transactionId: string) => {
     const [itemsRes, paymentsRes] = await Promise.all([
       supabase
         .from('pos_transaction_items')
-        .select('*, products(name, sku)')
+        .select('*, products(name, sku, category_id)')
         .eq('pos_transaction_id', transactionId),
       supabase
         .from('pos_transaction_payments')
@@ -105,6 +148,7 @@ const POSTransactions = () => {
 
   useEffect(() => {
     fetchTransactions();
+    fetchReceiptSettings();
   }, [selectedCompany, dateFrom, dateTo]);
 
   const handleViewDetails = async (transaction: POSTransaction) => {
@@ -112,7 +156,131 @@ const POSTransactions = () => {
     await fetchTransactionDetails(transaction.id);
   };
 
-  const printReceipt = (transaction: POSTransaction) => {
+  // Get filtered items for kitchen printing based on split rules
+  const getFilteredItemsForSetting = (setting: ReceiptSetting, items: TransactionItem[]) => {
+    if (setting.receipt_type !== 'kitchen') return items;
+    
+    const settingRules = splitRules.filter(r => r.receipt_setting_id === setting.id);
+    if (settingRules.length === 0) return items;
+    
+    const categoryIds = settingRules.map(r => r.category_id).filter(Boolean);
+    return items.filter(item => categoryIds.includes(item.products?.category_id || null));
+  };
+
+  // Generate receipt HTML based on settings
+  const generateReceiptHtml = (setting: ReceiptSetting, items: TransactionItem[], transaction: POSTransaction) => {
+    const paperWidth = setting.paper_size === '58mm' ? '58mm' : setting.paper_size === '80mm' ? '80mm' : '210mm';
+    const fontSize = setting.paper_size === '58mm' ? '10px' : '12px';
+    
+    const itemSubtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+    const itemDiscount = items.reduce((sum, item) => sum + item.discount_amount, 0);
+    const itemTotal = items.reduce((sum, item) => sum + item.total, 0);
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${setting.name} - ${transaction.transaction_number}</title>
+        <style>
+          body { font-family: 'Courier New', monospace; font-size: ${fontSize}; width: ${paperWidth}; margin: 0 auto; padding: 10px; }
+          .center { text-align: center; }
+          .right { text-align: right; }
+          hr { border: none; border-top: 1px dashed #000; margin: 8px 0; }
+          table { width: 100%; border-collapse: collapse; }
+          td { padding: 2px 0; }
+          .bold { font-weight: bold; }
+          .large { font-size: ${setting.paper_size === '58mm' ? '12px' : '14px'}; }
+          .logo { max-height: 50px; max-width: 100px; margin-bottom: 5px; }
+          .kitchen-header { background: #000; color: #fff; padding: 5px; margin: -10px -10px 10px; }
+          @media print { body { margin: 0; } }
+        </style>
+      </head>
+      <body>
+        ${setting.receipt_type === 'kitchen' ? '<div class="kitchen-header center bold large">ORDER DAPUR</div>' : ''}
+        <div class="center">
+          ${setting.show_logo && setting.logo_url ? `<img src="${setting.logo_url}" class="logo" alt="Logo" />` : ''}
+          ${setting.header_text ? `<div style="white-space: pre-line; margin-top: 5px;">${setting.header_text}</div>` : ''}
+        </div>
+        <hr>
+        <div>No: ${transaction.transaction_number}</div>
+        <div>Tgl: ${format(new Date(transaction.transaction_date), 'dd/MM/yyyy HH:mm', { locale: id })}</div>
+        ${setting.show_customer_info ? `<div>Pelanggan: ${transaction.customer_name || '-'}</div>` : ''}
+        <hr>
+        ${setting.show_item_details ? `
+          <table>
+            ${items.map(item => `
+              <tr>
+                <td colspan="2"><strong>${item.products?.name}</strong></td>
+              </tr>
+              <tr>
+                <td>${item.quantity} x ${formatCurrency(item.unit_price)}${item.discount_percent > 0 ? ` -${item.discount_percent}%` : ''}</td>
+                <td class="right">${formatCurrency(item.total)}</td>
+              </tr>
+            `).join('')}
+          </table>
+          <hr>
+          <table>
+            <tr><td>Subtotal</td><td class="right">${formatCurrency(itemSubtotal)}</td></tr>
+            ${itemDiscount > 0 ? `<tr><td>Diskon</td><td class="right">-${formatCurrency(itemDiscount)}</td></tr>` : ''}
+            ${(transaction.tax_amount || 0) > 0 && setting.receipt_type !== 'kitchen' ? `<tr><td>Pajak</td><td class="right">${formatCurrency(transaction.tax_amount)}</td></tr>` : ''}
+            ${setting.receipt_type !== 'kitchen' ? `<tr class="bold"><td>TOTAL</td><td class="right">${formatCurrency(transaction.total_amount || 0)}</td></tr>` : ''}
+          </table>
+        ` : `
+          <table>
+            ${items.map(item => `
+              <tr>
+                <td><strong>${item.products?.name}</strong></td>
+                <td class="right bold">${item.quantity}x</td>
+              </tr>
+            `).join('')}
+          </table>
+        `}
+        ${setting.show_payment_info && setting.receipt_type !== 'kitchen' ? `
+          <hr>
+          <table>
+            ${transactionPayments.map(p => `
+              <tr><td>${(p.pos_payment_methods as any)?.name || 'Unknown'}</td><td class="right">${formatCurrency(p.amount)}</td></tr>
+            `).join('')}
+            <tr><td>Kembali</td><td class="right">${formatCurrency(transaction.change_amount || 0)}</td></tr>
+          </table>
+        ` : ''}
+        ${setting.footer_text ? `<hr><div class="center" style="white-space: pre-line;">${setting.footer_text}</div>` : ''}
+        ${setting.receipt_type !== 'kitchen' ? '<div class="center" style="margin-top: 10px;">Terima kasih</div>' : ''}
+      </body>
+      </html>
+    `;
+  };
+
+  const printReceiptByType = async (transaction: POSTransaction, receiptType: 'customer' | 'kitchen') => {
+    await fetchTransactionDetails(transaction.id);
+    
+    const activeSettings = receiptSettings.filter(s => s.receipt_type === receiptType && s.is_active);
+    
+    if (activeSettings.length === 0) {
+      // Fallback to basic print if no settings configured
+      printBasicReceipt(transaction, receiptType);
+      return;
+    }
+
+    for (const setting of activeSettings) {
+      const filteredItems = getFilteredItemsForSetting(setting, transactionItems);
+      if (filteredItems.length === 0) continue;
+
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) continue;
+
+      const receiptHtml = generateReceiptHtml(setting, filteredItems, transaction);
+      printWindow.document.write(receiptHtml);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 250);
+    }
+  };
+
+  const printBasicReceipt = (transaction: POSTransaction, type: 'customer' | 'kitchen') => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
@@ -120,7 +288,7 @@ const POSTransactions = () => {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Struk ${transaction.transaction_number}</title>
+        <title>${type === 'kitchen' ? 'Order Dapur' : 'Struk'} ${transaction.transaction_number}</title>
         <style>
           body { font-family: 'Courier New', monospace; font-size: 12px; width: 80mm; margin: 0 auto; padding: 10px; }
           .center { text-align: center; }
@@ -129,17 +297,15 @@ const POSTransactions = () => {
           table { width: 100%; border-collapse: collapse; }
           td { padding: 2px 0; }
           .bold { font-weight: bold; }
+          .kitchen-header { background: #000; color: #fff; padding: 5px; margin: -10px -10px 10px; }
         </style>
       </head>
       <body>
-        <div class="center">
-          <div class="bold">${selectedCompany?.name}</div>
-          <div>${selectedCompany?.address || ''}</div>
-        </div>
+        ${type === 'kitchen' ? '<div class="kitchen-header center bold">ORDER DAPUR</div>' : `<div class="center"><div class="bold">${selectedCompany?.name}</div></div>`}
         <hr>
         <div>No: ${transaction.transaction_number}</div>
         <div>Tgl: ${format(new Date(transaction.transaction_date), 'dd/MM/yyyy HH:mm', { locale: id })}</div>
-        <div>Pelanggan: ${transaction.customer_name || '-'}</div>
+        ${type === 'customer' ? `<div>Pelanggan: ${transaction.customer_name || '-'}</div>` : ''}
         <hr>
         <table>
           ${transactionItems.map(item => `
@@ -152,22 +318,24 @@ const POSTransactions = () => {
             </tr>
           `).join('')}
         </table>
-        <hr>
-        <table>
-          <tr><td>Subtotal</td><td class="right">${formatCurrency(transaction.subtotal || 0)}</td></tr>
-          ${(transaction.discount_amount || 0) > 0 ? `<tr><td>Diskon</td><td class="right">-${formatCurrency(transaction.discount_amount)}</td></tr>` : ''}
-          ${(transaction.tax_amount || 0) > 0 ? `<tr><td>Pajak</td><td class="right">${formatCurrency(transaction.tax_amount)}</td></tr>` : ''}
-          <tr class="bold"><td>TOTAL</td><td class="right">${formatCurrency(transaction.total_amount || 0)}</td></tr>
-        </table>
-        <hr>
-        <table>
-          ${transactionPayments.map(p => `
-            <tr><td>${(p.pos_payment_methods as any)?.name || 'Unknown'}</td><td class="right">${formatCurrency(p.amount)}</td></tr>
-          `).join('')}
-          <tr><td>Kembali</td><td class="right">${formatCurrency(transaction.change_amount || 0)}</td></tr>
-        </table>
-        <hr>
-        <div class="center">Terima kasih</div>
+        ${type === 'customer' ? `
+          <hr>
+          <table>
+            <tr><td>Subtotal</td><td class="right">${formatCurrency(transaction.subtotal || 0)}</td></tr>
+            ${(transaction.discount_amount || 0) > 0 ? `<tr><td>Diskon</td><td class="right">-${formatCurrency(transaction.discount_amount)}</td></tr>` : ''}
+            ${(transaction.tax_amount || 0) > 0 ? `<tr><td>Pajak</td><td class="right">${formatCurrency(transaction.tax_amount)}</td></tr>` : ''}
+            <tr class="bold"><td>TOTAL</td><td class="right">${formatCurrency(transaction.total_amount || 0)}</td></tr>
+          </table>
+          <hr>
+          <table>
+            ${transactionPayments.map(p => `
+              <tr><td>${(p.pos_payment_methods as any)?.name || 'Unknown'}</td><td class="right">${formatCurrency(p.amount)}</td></tr>
+            `).join('')}
+            <tr><td>Kembali</td><td class="right">${formatCurrency(transaction.change_amount || 0)}</td></tr>
+          </table>
+          <hr>
+          <div class="center">Terima kasih</div>
+        ` : ''}
       </body>
       </html>
     `;
@@ -179,6 +347,12 @@ const POSTransactions = () => {
       printWindow.print();
       printWindow.close();
     }, 250);
+  };
+
+  const printAllReceipts = async (transaction: POSTransaction) => {
+    await fetchTransactionDetails(transaction.id);
+    await printReceiptByType(transaction, 'kitchen');
+    setTimeout(() => printReceiptByType(transaction, 'customer'), 500);
   };
 
   const filteredTransactions = transactions.filter(t =>
@@ -354,16 +528,33 @@ const POSTransactions = () => {
                         <Button variant="ghost" size="icon" onClick={() => handleViewDetails(transaction)}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={async () => {
-                            await fetchTransactionDetails(transaction.id);
-                            printReceipt(transaction);
-                          }}
-                        >
-                          <Printer className="h-4 w-4" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <Printer className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={async () => {
+                              await fetchTransactionDetails(transaction.id);
+                              printReceiptByType(transaction, 'customer');
+                            }}>
+                              <Receipt className="h-4 w-4 mr-2" />
+                              Cetak Nota
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={async () => {
+                              await fetchTransactionDetails(transaction.id);
+                              printReceiptByType(transaction, 'kitchen');
+                            }}>
+                              <ChefHat className="h-4 w-4 mr-2" />
+                              Cetak Dapur
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => printAllReceipts(transaction)}>
+                              <Printer className="h-4 w-4 mr-2" />
+                              Cetak Semua
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -481,11 +672,15 @@ const POSTransactions = () => {
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setSelectedTransaction(null)}>Tutup</Button>
-            <Button onClick={() => selectedTransaction && printReceipt(selectedTransaction)}>
-              <Printer className="h-4 w-4 mr-2" />
-              Cetak Struk
+            <Button variant="outline" onClick={() => selectedTransaction && printReceiptByType(selectedTransaction, 'kitchen')}>
+              <ChefHat className="h-4 w-4 mr-2" />
+              Cetak Dapur
+            </Button>
+            <Button onClick={() => selectedTransaction && printReceiptByType(selectedTransaction, 'customer')}>
+              <Receipt className="h-4 w-4 mr-2" />
+              Cetak Nota
             </Button>
           </DialogFooter>
         </DialogContent>
