@@ -6,6 +6,7 @@ import { useAccounts } from '@/hooks/useAccounts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -126,30 +127,44 @@ export const Suppliers: React.FC = () => {
       {isLoading ? <div className="text-center py-12 text-muted-foreground">Loading...</div> : filteredSuppliers.length === 0 ? (
         <Card><CardContent className="py-12 text-center"><Building2 className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="text-lg font-semibold mb-2">No suppliers found</h3></CardContent></Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredSuppliers.map((supplier, i) => (
-            <Card key={supplier.id} className="animate-fade-in" style={{ animationDelay: `${i * 50}ms` }}>
-              <CardContent className="p-6">
-                <div className="flex justify-between mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center"><Building2 className="w-6 h-6 text-accent" /></div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => openProductSuppliers(supplier)} title="Produk Supplier">
-                      <Package className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit(supplier)}><Edit2 className="w-4 h-4" /></Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(supplier.id)} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground font-mono">{supplier.code}</p>
-                <h3 className="font-semibold truncate">{supplier.name}</h3>
-                <div className="mt-3 space-y-1 text-sm text-muted-foreground">
-                  {supplier.email && <div className="flex items-center gap-2"><Mail className="w-3 h-3" />{supplier.email}</div>}
-                  {supplier.phone && <div className="flex items-center gap-2"><Phone className="w-3 h-3" />{supplier.phone}</div>}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Code</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead className="text-center">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredSuppliers.map((supplier) => (
+                  <TableRow key={supplier.id}>
+                    <TableCell className="font-mono text-sm">{supplier.code}</TableCell>
+                    <TableCell className="font-medium">{supplier.name}</TableCell>
+                    <TableCell className="text-muted-foreground">{supplier.email || '-'}</TableCell>
+                    <TableCell className="text-muted-foreground">{supplier.phone || '-'}</TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex justify-center gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => openProductSuppliers(supplier)} title="Produk Supplier">
+                          <Package className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(supplier)}>
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(supplier.id)} className="text-destructive">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
 
       {/* Product Suppliers Dialog */}

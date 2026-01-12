@@ -6,6 +6,7 @@ import { useAccounts } from '@/hooks/useAccounts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -325,65 +326,50 @@ export const Customers: React.FC = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredCustomers.map((customer, index) => (
-            <Card key={customer.id} className="animate-fade-in hover:shadow-lg transition-all" style={{ animationDelay: `${index * 50}ms` }}>
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <Users className="w-6 h-6 text-primary" />
-                  </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit(customer)}>
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(customer.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="mb-3">
-                  <p className="text-xs text-muted-foreground font-mono">{customer.code}</p>
-                  <h3 className="font-semibold text-foreground truncate">{customer.name}</h3>
-                </div>
-
-                <div className="space-y-2 text-sm">
-                  {customer.email && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Mail className="w-4 h-4" />
-                      <span className="truncate">{customer.email}</span>
-                    </div>
-                  )}
-                  {customer.phone && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Phone className="w-4 h-4" />
-                      <span>{customer.phone}</span>
-                    </div>
-                  )}
-                  {customer.address && (
-                    <div className="flex items-start gap-2 text-muted-foreground">
-                      <MapPin className="w-4 h-4 mt-0.5" />
-                      <span className="line-clamp-2">{customer.address}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-4 pt-4 border-t border-border">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">Credit Limit</p>
-                    <p className="font-semibold text-primary">{formatCurrency(customer.credit_limit)}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Code</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead className="text-right">Credit Limit</TableHead>
+                  <TableHead className="text-center">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredCustomers.map((customer) => (
+                  <TableRow key={customer.id}>
+                    <TableCell className="font-mono text-sm">{customer.code}</TableCell>
+                    <TableCell className="font-medium">{customer.name}</TableCell>
+                    <TableCell className="text-muted-foreground">{customer.email || '-'}</TableCell>
+                    <TableCell className="text-muted-foreground">{customer.phone || '-'}</TableCell>
+                    <TableCell className="text-right text-primary font-medium">
+                      {formatCurrency(customer.credit_limit)}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex justify-center gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(customer)}>
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(customer.id)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
