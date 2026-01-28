@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { Lock, Unlock, Eye, Calculator } from 'lucide-react';
+import { Lock, Unlock, Eye, Calculator, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/formatters';
 
@@ -122,7 +122,7 @@ const POSCashClosing = () => {
     setShowCloseDialog(true);
   };
 
-  const closeSession = async () => {
+  const closeSession = async (shouldPrint: boolean = false) => {
     if (!currentSession) return;
     
     const closing = parseFloat(closingBalance) || 0;
@@ -150,11 +150,117 @@ const POSCashClosing = () => {
       return;
     }
 
+    if (shouldPrint) {
+      printClosingReport({
+        openedAt: currentSession.opened_at,
+        closedAt: new Date().toISOString(),
+        openingBalance: currentSession.opening_balance,
+        closingBalance: closing,
+        expectedBalance: expected,
+        difference: diff,
+        totalSales: sessionStats?.totalSales || 0,
+        totalTransactions: sessionStats?.totalTransactions || 0,
+        paymentSummary: sessionStats?.paymentSummary || []
+      });
+    }
+
     toast.success('Sesi kasir berhasil ditutup');
     setShowCloseDialog(false);
     setClosingBalance('');
     setClosingNotes('');
     fetchSessions();
+  };
+
+  const printClosingReport = (data: {
+    openedAt: string;
+    closedAt: string;
+    openingBalance: number;
+    closingBalance: number;
+    expectedBalance: number;
+    difference: number;
+    totalSales: number;
+    totalTransactions: number;
+    paymentSummary: PaymentSummary[];
+  }) => {
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Laporan Penutupan Kas</title>
+        <style>
+          body { font-family: monospace; font-size: 12px; width: 80mm; margin: 0 auto; padding: 10px; }
+          .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+          .header h2 { margin: 0 0 5px 0; font-size: 14px; }
+          .row { display: flex; justify-content: space-between; margin: 3px 0; }
+          .divider { border-top: 1px dashed #000; margin: 10px 0; }
+          .total { font-weight: bold; font-size: 14px; }
+          .diff-pos { color: blue; }
+          .diff-neg { color: red; }
+          .diff-zero { color: green; }
+          @media print { body { width: 80mm; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h2>LAPORAN PENUTUPAN KAS</h2>
+          <p>${format(new Date(), 'dd MMMM yyyy HH:mm', { locale: id })}</p>
+        </div>
+        
+        <div class="row"><span>Dibuka:</span><span>${format(new Date(data.openedAt), 'dd/MM/yy HH:mm', { locale: id })}</span></div>
+        <div class="row"><span>Ditutup:</span><span>${format(new Date(data.closedAt), 'dd/MM/yy HH:mm', { locale: id })}</span></div>
+        
+        <div class="divider"></div>
+        
+        <div class="row"><span>Total Transaksi:</span><span>${data.totalTransactions}</span></div>
+        <div class="row total"><span>Total Penjualan:</span><span>${formatCurrency(data.totalSales)}</span></div>
+        
+        <div class="divider"></div>
+        <p><strong>Rincian Pembayaran:</strong></p>
+        ${data.paymentSummary.map(p => `<div class="row"><span>${p.method_name}</span><span>${formatCurrency(p.total)}</span></div>`).join('')}
+        
+        <div class="divider"></div>
+        
+        <div class="row"><span>Saldo Awal:</span><span>${formatCurrency(data.openingBalance)}</span></div>
+        <div class="row"><span>Ekspektasi Kas:</span><span>${formatCurrency(data.expectedBalance)}</span></div>
+        <div class="row"><span>Saldo Akhir (Fisik):</span><span>${formatCurrency(data.closingBalance)}</span></div>
+        
+        <div class="divider"></div>
+        
+        <div class="row total">
+          <span>SELISIH:</span>
+          <span class="${data.difference === 0 ? 'diff-zero' : data.difference > 0 ? 'diff-pos' : 'diff-neg'}">
+            ${data.difference > 0 ? '+' : ''}${formatCurrency(data.difference)}
+          </span>
+        </div>
+        
+        <div class="divider"></div>
+        <p style="text-align: center; margin-top: 20px;">--- Terima Kasih ---</p>
+      </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
+  const printSessionReport = (session: CashSession) => {
+    if (!sessionStats) return;
+    
+    printClosingReport({
+      openedAt: session.opened_at,
+      closedAt: session.closed_at || new Date().toISOString(),
+      openingBalance: session.opening_balance,
+      closingBalance: session.closing_balance || 0,
+      expectedBalance: session.expected_balance || 0,
+      difference: session.difference || 0,
+      totalSales: sessionStats.totalSales,
+      totalTransactions: sessionStats.totalTransactions,
+      paymentSummary: sessionStats.paymentSummary
+    });
   };
 
   const viewDetails = async (session: CashSession) => {
@@ -351,9 +457,13 @@ const POSCashClosing = () => {
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setShowCloseDialog(false)}>Batal</Button>
-            <Button onClick={closeSession}>
+            <Button variant="secondary" onClick={() => closeSession(true)}>
+              <Printer className="h-4 w-4 mr-2" />
+              Tutup & Cetak
+            </Button>
+            <Button onClick={() => closeSession(false)}>
               <Lock className="h-4 w-4 mr-2" />
               Tutup Sesi
             </Button>
@@ -441,6 +551,17 @@ const POSCashClosing = () => {
                   <Label className="text-sm text-muted-foreground">Catatan</Label>
                   <p className="text-sm">{selectedSession.notes}</p>
                 </div>
+              )}
+
+              {selectedSession.status === 'closed' && (
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => printSessionReport(selectedSession)}
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  Cetak Laporan
+                </Button>
               )}
             </div>
           )}

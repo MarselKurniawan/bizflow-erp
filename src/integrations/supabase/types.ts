@@ -1342,33 +1342,45 @@ export type Database = {
       pos_tax_rates: {
         Row: {
           account_id: string | null
+          apply_order: number | null
+          calculation_method: string | null
           company_id: string
           created_at: string
+          display_name: string | null
           id: string
           is_active: boolean | null
           is_default: boolean | null
           name: string
           rate: number
+          show_on_receipt: boolean | null
         }
         Insert: {
           account_id?: string | null
+          apply_order?: number | null
+          calculation_method?: string | null
           company_id: string
           created_at?: string
+          display_name?: string | null
           id?: string
           is_active?: boolean | null
           is_default?: boolean | null
           name: string
           rate?: number
+          show_on_receipt?: boolean | null
         }
         Update: {
           account_id?: string | null
+          apply_order?: number | null
+          calculation_method?: string | null
           company_id?: string
           created_at?: string
+          display_name?: string | null
           id?: string
           is_active?: boolean | null
           is_default?: boolean | null
           name?: string
           rate?: number
+          show_on_receipt?: boolean | null
         }
         Relationships: [
           {
