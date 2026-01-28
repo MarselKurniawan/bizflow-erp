@@ -50,6 +50,18 @@ const POSCashClosing = () => {
     totalSales: number;
     totalTransactions: number;
     paymentSummary: PaymentSummary[];
+    // Extended stats for detailed report
+    subtotal: number;
+    discountAmount: number;
+    taxAmount: number;
+    serviceAmount: number;
+    roundingAmount: number;
+    totalGuests: number;
+    avgPerGuest: number;
+    totalInvoices: number;
+    avgPerInvoice: number;
+    complimentTotal: number;
+    complimentCount: number;
   } | null>(null);
 
   const fetchSessions = async () => {
@@ -75,15 +87,24 @@ const POSCashClosing = () => {
   }, [selectedCompany]);
 
   const fetchSessionStats = async (sessionId: string) => {
-    // Get transactions for this session
+    // Get transactions for this session with full details
     const { data: transactions } = await supabase
       .from('pos_transactions')
-      .select('id, total_amount, status')
+      .select('id, total_amount, subtotal, discount_amount, tax_amount, status')
       .eq('cash_session_id', sessionId)
       .eq('status', 'completed');
     
-    const totalSales = transactions?.reduce((sum, t) => sum + (t.total_amount || 0), 0) || 0;
-    const totalTransactions = transactions?.length || 0;
+    const completedTransactions = transactions || [];
+    const totalSales = completedTransactions.reduce((sum, t) => sum + (t.total_amount || 0), 0);
+    const totalTransactions = completedTransactions.length;
+    const subtotal = completedTransactions.reduce((sum, t) => sum + (t.subtotal || 0), 0);
+    const discountAmount = completedTransactions.reduce((sum, t) => sum + (t.discount_amount || 0), 0);
+    const taxAmount = completedTransactions.reduce((sum, t) => sum + (t.tax_amount || 0), 0);
+    
+    // Calculate service charge and rounding (estimated from difference)
+    const calculatedTotal = subtotal - discountAmount + taxAmount;
+    const roundingAmount = totalSales - calculatedTotal;
+    const serviceAmount = 0; // Would need separate tracking for service charge
 
     // Get payment breakdown
     const { data: payments } = await supabase
@@ -92,7 +113,7 @@ const POSCashClosing = () => {
         amount,
         pos_payment_methods(name)
       `)
-      .in('pos_transaction_id', transactions?.map(t => t.id) || []);
+      .in('pos_transaction_id', completedTransactions.map(t => t.id));
 
     const paymentMap = new Map<string, number>();
     payments?.forEach(p => {
@@ -105,7 +126,34 @@ const POSCashClosing = () => {
       total
     }));
 
-    setSessionStats({ totalSales, totalTransactions, paymentSummary });
+    // Guest stats (estimate 1 guest per transaction for now, can be enhanced)
+    const totalGuests = totalTransactions;
+    const avgPerGuest = totalGuests > 0 ? totalSales / totalGuests : 0;
+
+    // Invoice stats
+    const totalInvoices = totalTransactions;
+    const avgPerInvoice = totalInvoices > 0 ? totalSales / totalInvoices : 0;
+
+    // Compliment (void/cancelled transactions) - for now set to 0
+    const complimentTotal = 0;
+    const complimentCount = 0;
+
+    setSessionStats({ 
+      totalSales, 
+      totalTransactions, 
+      paymentSummary,
+      subtotal,
+      discountAmount,
+      taxAmount,
+      serviceAmount,
+      roundingAmount,
+      totalGuests,
+      avgPerGuest,
+      totalInvoices,
+      avgPerInvoice,
+      complimentTotal,
+      complimentCount
+    });
   };
 
   const openCloseDialog = async () => {
@@ -160,7 +208,18 @@ const POSCashClosing = () => {
         difference: diff,
         totalSales: sessionStats?.totalSales || 0,
         totalTransactions: sessionStats?.totalTransactions || 0,
-        paymentSummary: sessionStats?.paymentSummary || []
+        paymentSummary: sessionStats?.paymentSummary || [],
+        subtotal: sessionStats?.subtotal || 0,
+        discountAmount: sessionStats?.discountAmount || 0,
+        taxAmount: sessionStats?.taxAmount || 0,
+        serviceAmount: sessionStats?.serviceAmount || 0,
+        roundingAmount: sessionStats?.roundingAmount || 0,
+        totalGuests: sessionStats?.totalGuests || 0,
+        avgPerGuest: sessionStats?.avgPerGuest || 0,
+        totalInvoices: sessionStats?.totalInvoices || 0,
+        avgPerInvoice: sessionStats?.avgPerInvoice || 0,
+        complimentTotal: sessionStats?.complimentTotal || 0,
+        complimentCount: sessionStats?.complimentCount || 0
       });
     }
 
@@ -181,60 +240,88 @@ const POSCashClosing = () => {
     totalSales: number;
     totalTransactions: number;
     paymentSummary: PaymentSummary[];
+    subtotal: number;
+    discountAmount: number;
+    taxAmount: number;
+    serviceAmount: number;
+    roundingAmount: number;
+    totalGuests: number;
+    avgPerGuest: number;
+    totalInvoices: number;
+    avgPerInvoice: number;
+    complimentTotal: number;
+    complimentCount: number;
   }) => {
+    const formatNumber = (num: number) => new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
+    
     const printContent = `
       <!DOCTYPE html>
       <html>
       <head>
         <title>Laporan Penutupan Kas</title>
         <style>
-          body { font-family: monospace; font-size: 12px; width: 80mm; margin: 0 auto; padding: 10px; }
-          .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
-          .header h2 { margin: 0 0 5px 0; font-size: 14px; }
-          .row { display: flex; justify-content: space-between; margin: 3px 0; }
-          .divider { border-top: 1px dashed #000; margin: 10px 0; }
-          .total { font-weight: bold; font-size: 14px; }
-          .diff-pos { color: blue; }
-          .diff-neg { color: red; }
-          .diff-zero { color: green; }
-          @media print { body { width: 80mm; } }
+          body { font-family: monospace; font-size: 11px; width: 80mm; margin: 0 auto; padding: 8px; line-height: 1.3; }
+          .header { margin-bottom: 8px; }
+          .header p { margin: 2px 0; }
+          .section-title { font-weight: bold; margin: 8px 0 4px 0; text-decoration: underline; }
+          .row { display: flex; justify-content: space-between; margin: 2px 0; }
+          .row-indent { padding-left: 8px; }
+          .divider { border-top: 1px dashed #000; margin: 6px 0; }
+          .total { font-weight: bold; }
+          @media print { 
+            body { width: 80mm; margin: 0; padding: 5px; } 
+            @page { margin: 0; size: 80mm auto; }
+          }
         </style>
       </head>
       <body>
         <div class="header">
-          <h2>LAPORAN PENUTUPAN KAS</h2>
-          <p>${format(new Date(), 'dd MMMM yyyy HH:mm', { locale: id })}</p>
+          <p>Date: ${format(new Date(data.closedAt), 'MM/dd/yyyy')}</p>
+          <p>Company: ${selectedCompany?.name || 'Company'}</p>
+          <p>Report Time: ${format(new Date(data.closedAt), 'MM/dd/yyyy HH:mm:ss')}</p>
         </div>
         
-        <div class="row"><span>Dibuka:</span><span>${format(new Date(data.openedAt), 'dd/MM/yy HH:mm', { locale: id })}</span></div>
-        <div class="row"><span>Ditutup:</span><span>${format(new Date(data.closedAt), 'dd/MM/yy HH:mm', { locale: id })}</span></div>
-        
+        <div class="section-title">Revenue</div>
+        <div class="row row-indent"><span>Subtotal</span></div>
+        <div class="row"><span></span><span>${formatNumber(data.subtotal)}</span></div>
+        <div class="row row-indent"><span>Discount</span></div>
+        <div class="row"><span></span><span>${formatNumber(data.discountAmount)}</span></div>
+        <div class="row row-indent"><span>PB1</span></div>
+        <div class="row"><span></span><span>${formatNumber(data.taxAmount)}</span></div>
+        <div class="row row-indent"><span>SERVICE CHARGE</span></div>
+        <div class="row"><span></span><span>${formatNumber(data.serviceAmount)}</span></div>
+        <div class="row row-indent"><span>ROUNDING</span></div>
+        <div class="row"><span></span><span>${formatNumber(data.roundingAmount)}</span></div>
         <div class="divider"></div>
+        <div class="row row-indent"><span>Total</span></div>
+        <div class="row"><span></span><span>${formatNumber(data.totalSales)}</span></div>
         
-        <div class="row"><span>Total Transaksi:</span><span>${data.totalTransactions}</span></div>
-        <div class="row total"><span>Total Penjualan:</span><span>${formatCurrency(data.totalSales)}</span></div>
-        
-        <div class="divider"></div>
-        <p><strong>Rincian Pembayaran:</strong></p>
-        ${data.paymentSummary.map(p => `<div class="row"><span>${p.method_name}</span><span>${formatCurrency(p.total)}</span></div>`).join('')}
-        
-        <div class="divider"></div>
-        
-        <div class="row"><span>Saldo Awal:</span><span>${formatCurrency(data.openingBalance)}</span></div>
-        <div class="row"><span>Ekspektasi Kas:</span><span>${formatCurrency(data.expectedBalance)}</span></div>
-        <div class="row"><span>Saldo Akhir (Fisik):</span><span>${formatCurrency(data.closingBalance)}</span></div>
-        
-        <div class="divider"></div>
-        
-        <div class="row total">
-          <span>SELISIH:</span>
-          <span class="${data.difference === 0 ? 'diff-zero' : data.difference > 0 ? 'diff-pos' : 'diff-neg'}">
-            ${data.difference > 0 ? '+' : ''}${formatCurrency(data.difference)}
-          </span>
+        <div style="margin-top: 10px;">
+          <div class="row row-indent"><span>Total Guest</span><span>${data.totalGuests}</span></div>
+          <div class="row row-indent"><span>Avg. per Guest</span></div>
+          <div class="row"><span></span><span>${formatNumber(data.avgPerGuest)}</span></div>
         </div>
         
+        <div style="margin-top: 6px;">
+          <div class="row row-indent"><span>No. of Inv.</span><span>${data.totalInvoices}</span></div>
+          <div class="row row-indent"><span>Avg. per Inv.</span></div>
+          <div class="row"><span></span><span>${formatNumber(data.avgPerInvoice)}</span></div>
+        </div>
+        
+        <div class="section-title">Payments</div>
+        ${data.paymentSummary.map(p => `
+          <div class="row row-indent"><span>${p.method_name.toUpperCase()}</span></div>
+          <div class="row"><span></span><span>${formatNumber(p.total)}</span></div>
+        `).join('')}
         <div class="divider"></div>
-        <p style="text-align: center; margin-top: 20px;">--- Terima Kasih ---</p>
+        <div class="row row-indent"><span>Total</span></div>
+        <div class="row"><span></span><span>${formatNumber(data.paymentSummary.reduce((sum, p) => sum + p.total, 0))}</span></div>
+        
+        <div class="section-title">Compliment</div>
+        <div class="row row-indent"><span>Total Compliment</span><span>${formatNumber(data.complimentTotal)}</span></div>
+        <div class="row row-indent"><span>No. of Inv</span><span>${data.complimentCount}</span></div>
+        <div class="row row-indent"><span>Avg per Inv</span><span>${formatNumber(data.complimentCount > 0 ? data.complimentTotal / data.complimentCount : 0)}</span></div>
+        
       </body>
       </html>
     `;
@@ -259,7 +346,18 @@ const POSCashClosing = () => {
       difference: session.difference || 0,
       totalSales: sessionStats.totalSales,
       totalTransactions: sessionStats.totalTransactions,
-      paymentSummary: sessionStats.paymentSummary
+      paymentSummary: sessionStats.paymentSummary,
+      subtotal: sessionStats.subtotal,
+      discountAmount: sessionStats.discountAmount,
+      taxAmount: sessionStats.taxAmount,
+      serviceAmount: sessionStats.serviceAmount,
+      roundingAmount: sessionStats.roundingAmount,
+      totalGuests: sessionStats.totalGuests,
+      avgPerGuest: sessionStats.avgPerGuest,
+      totalInvoices: sessionStats.totalInvoices,
+      avgPerInvoice: sessionStats.avgPerInvoice,
+      complimentTotal: sessionStats.complimentTotal,
+      complimentCount: sessionStats.complimentCount
     });
   };
 
