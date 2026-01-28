@@ -1074,6 +1074,226 @@ export type Database = {
           },
         ]
       }
+      pos_deposits: {
+        Row: {
+          cash_account_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          customer_name: string
+          customer_phone: string | null
+          deposit_amount: number
+          deposit_number: string
+          event_date: string
+          event_name: string
+          id: string
+          journal_entry_id: string | null
+          notes: string | null
+          payment_method_id: string | null
+          remaining_amount: number | null
+          status: string
+          total_estimated: number | null
+          updated_at: string
+        }
+        Insert: {
+          cash_account_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          customer_name: string
+          customer_phone?: string | null
+          deposit_amount: number
+          deposit_number: string
+          event_date: string
+          event_name: string
+          id?: string
+          journal_entry_id?: string | null
+          notes?: string | null
+          payment_method_id?: string | null
+          remaining_amount?: number | null
+          status?: string
+          total_estimated?: number | null
+          updated_at?: string
+        }
+        Update: {
+          cash_account_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          customer_name?: string
+          customer_phone?: string | null
+          deposit_amount?: number
+          deposit_number?: string
+          event_date?: string
+          event_name?: string
+          id?: string
+          journal_entry_id?: string | null
+          notes?: string | null
+          payment_method_id?: string | null
+          remaining_amount?: number | null
+          status?: string
+          total_estimated?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_deposits_cash_account_id_fkey"
+            columns: ["cash_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_deposits_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_deposits_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_deposits_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "pos_payment_methods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_open_table_items: {
+        Row: {
+          cost_price: number
+          created_at: string
+          discount_amount: number | null
+          discount_percent: number | null
+          id: string
+          notes: string | null
+          open_table_id: string
+          product_id: string
+          quantity: number
+          served_at: string | null
+          tax_amount: number | null
+          tax_percent: number | null
+          total: number
+          unit_price: number
+        }
+        Insert: {
+          cost_price?: number
+          created_at?: string
+          discount_amount?: number | null
+          discount_percent?: number | null
+          id?: string
+          notes?: string | null
+          open_table_id: string
+          product_id: string
+          quantity?: number
+          served_at?: string | null
+          tax_amount?: number | null
+          tax_percent?: number | null
+          total: number
+          unit_price: number
+        }
+        Update: {
+          cost_price?: number
+          created_at?: string
+          discount_amount?: number | null
+          discount_percent?: number | null
+          id?: string
+          notes?: string | null
+          open_table_id?: string
+          product_id?: string
+          quantity?: number
+          served_at?: string | null
+          tax_amount?: number | null
+          tax_percent?: number | null
+          total?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_open_table_items_open_table_id_fkey"
+            columns: ["open_table_id"]
+            isOneToOne: false
+            referencedRelation: "pos_open_tables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_open_table_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_open_tables: {
+        Row: {
+          closed_at: string | null
+          company_id: string
+          created_by: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          discount_amount: number | null
+          id: string
+          notes: string | null
+          opened_at: string
+          status: string
+          subtotal: number | null
+          table_name: string
+          tax_amount: number | null
+          total_amount: number | null
+          total_cogs: number | null
+        }
+        Insert: {
+          closed_at?: string | null
+          company_id: string
+          created_by?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          discount_amount?: number | null
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          status?: string
+          subtotal?: number | null
+          table_name: string
+          tax_amount?: number | null
+          total_amount?: number | null
+          total_cogs?: number | null
+        }
+        Update: {
+          closed_at?: string | null
+          company_id?: string
+          created_by?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          discount_amount?: number | null
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          status?: string
+          subtotal?: number | null
+          table_name?: string
+          tax_amount?: number | null
+          total_amount?: number | null
+          total_cogs?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_open_tables_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pos_payment_methods: {
         Row: {
           account_id: string | null
@@ -1280,6 +1500,7 @@ export type Database = {
           customer_phone: string | null
           discount_amount: number | null
           id: string
+          invoice_number: string | null
           notes: string | null
           revenue_account_id: string | null
           status: string | null
@@ -1303,6 +1524,7 @@ export type Database = {
           customer_phone?: string | null
           discount_amount?: number | null
           id?: string
+          invoice_number?: string | null
           notes?: string | null
           revenue_account_id?: string | null
           status?: string | null
@@ -1326,6 +1548,7 @@ export type Database = {
           customer_phone?: string | null
           discount_amount?: number | null
           id?: string
+          invoice_number?: string | null
           notes?: string | null
           revenue_account_id?: string | null
           status?: string | null

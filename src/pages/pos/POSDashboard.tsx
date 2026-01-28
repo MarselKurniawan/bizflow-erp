@@ -373,6 +373,16 @@ const POSDashboard = () => {
     return `POS-${today}-${String((count || 0) + 1).padStart(4, '0')}`;
   };
 
+  const generateInvoiceNumber = async () => {
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const { count } = await supabase
+      .from('pos_transactions')
+      .select('*', { count: 'exact', head: true })
+      .eq('company_id', selectedCompany?.id)
+      .not('invoice_number', 'is', null);
+    return `INV-${today}-${String((count || 0) + 1).padStart(5, '0')}`;
+  };
+
   const generateCustomerCode = () => {
     const today = format(new Date(), 'yyyyMMdd');
     const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
@@ -424,6 +434,7 @@ const POSDashboard = () => {
     setIsProcessing(true);
     try {
       const transactionNumber = await generateTransactionNumber();
+      const invoiceNumber = await generateInvoiceNumber();
       const displayCustomerName = customerName || generateCustomerCode();
 
       // Create POS transaction
@@ -432,6 +443,7 @@ const POSDashboard = () => {
         .insert({
           company_id: selectedCompany.id,
           transaction_number: transactionNumber,
+          invoice_number: invoiceNumber,
           subtotal: subtotal,
           tax_amount: totalTax,
           total_amount: grandTotal,
@@ -502,16 +514,28 @@ const POSDashboard = () => {
       if (jeError) throw jeError;
 
       // Create journal lines based on payment methods
+      // IMPORTANT: Only debit the ACTUAL amount received, not including change
+      // If customer pays 100k for 85k bill with 15k change, we only debit 85k
       const journalLines: any[] = [];
       
-      // Debit each payment method's account
+      // Calculate total payment and adjust for change
+      // We need to proportionally distribute grandTotal across payment methods
+      const totalPayments = payments.reduce((sum, p) => sum + p.amount, 0);
+      
+      // Debit each payment method's account (proportionally adjusted)
       for (const payment of payments) {
         const method = paymentMethods.find(m => m.id === payment.method_id);
         if (method?.account_id) {
+          // Calculate the actual amount to record (adjusted for change)
+          // If totalPayments > grandTotal, we have change, so only record up to grandTotal proportionally
+          const actualAmount = totalPayments > grandTotal 
+            ? (payment.amount / totalPayments) * grandTotal 
+            : payment.amount;
+          
           journalLines.push({
             journal_entry_id: journalEntry.id,
             account_id: method.account_id,
-            debit_amount: payment.amount,
+            debit_amount: Math.round(actualAmount * 100) / 100, // Round to 2 decimal places
             credit_amount: 0,
             description: `Penerimaan via ${method.name}`
           });
