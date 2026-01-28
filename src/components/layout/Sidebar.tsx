@@ -54,6 +54,8 @@ const menuItems: MenuItem[] = [
     children: [
       { label: 'Kasir', path: '/pos' },
       { label: 'Riwayat Transaksi', path: '/pos/transactions' },
+      { label: 'Open Table', path: '/pos/open-tables' },
+      { label: 'Deposit / DP', path: '/pos/deposits' },
       { label: 'Laporan POS', path: '/pos/reports' },
       { label: 'Penutupan Kas', path: '/pos/cash-closing' },
       { label: 'Metode Pembayaran', path: '/pos/settings' },

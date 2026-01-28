@@ -17,6 +17,7 @@ import { exportToExcel, exportToPDF, generatePDFTable } from '@/lib/exportUtils'
 interface POSTransaction {
   id: string;
   transaction_number: string;
+  invoice_number: string | null;
   transaction_date: string;
   subtotal: number;
   tax_amount: number;
@@ -483,6 +484,7 @@ const POSTransactions = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>No. Transaksi</TableHead>
+                <TableHead>No. Invoice</TableHead>
                 <TableHead>Tanggal</TableHead>
                 <TableHead>Pelanggan</TableHead>
                 <TableHead className="text-right">Total</TableHead>
@@ -495,11 +497,11 @@ const POSTransactions = () => {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">Memuat...</TableCell>
+                  <TableCell colSpan={9} className="text-center py-8">Memuat...</TableCell>
                 </TableRow>
               ) : filteredTransactions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     Belum ada transaksi POS
                   </TableCell>
                 </TableRow>
@@ -507,6 +509,7 @@ const POSTransactions = () => {
                 filteredTransactions.map(transaction => (
                   <TableRow key={transaction.id}>
                     <TableCell className="font-medium">{transaction.transaction_number}</TableCell>
+                    <TableCell className="font-mono text-sm">{transaction.invoice_number || '-'}</TableCell>
                     <TableCell>
                       {format(new Date(transaction.transaction_date), 'dd MMM yyyy', { locale: id })}
                     </TableCell>
@@ -574,6 +577,10 @@ const POSTransactions = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
+                <span className="text-muted-foreground">No. Invoice:</span>
+                <p className="font-medium font-mono">{selectedTransaction?.invoice_number || '-'}</p>
+              </div>
+              <div>
                 <span className="text-muted-foreground">Tanggal:</span>
                 <p className="font-medium">
                   {selectedTransaction && format(new Date(selectedTransaction.transaction_date), 'dd MMMM yyyy HH:mm', { locale: id })}
@@ -585,6 +592,10 @@ const POSTransactions = () => {
                 {selectedTransaction?.customer_phone && (
                   <p className="text-xs text-muted-foreground">{selectedTransaction.customer_phone}</p>
                 )}
+              </div>
+              <div>
+                <span className="text-muted-foreground">Status:</span>
+                <p className="font-medium">{getStatusBadge(selectedTransaction?.status || '')}</p>
               </div>
             </div>
 
