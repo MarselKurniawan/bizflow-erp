@@ -457,14 +457,14 @@ const TaxSettings = () => {
               <div className="space-y-2">
                 <Label>Akun Pencatatan</Label>
                 <Select 
-                  value={formData.account_id} 
-                  onValueChange={(v) => setFormData({ ...formData, account_id: v })}
+                  value={formData.account_id || "none"} 
+                  onValueChange={(v) => setFormData({ ...formData, account_id: v === "none" ? "" : v })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Pilih akun" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Tidak ada</SelectItem>
+                    <SelectItem value="none">Tidak ada</SelectItem>
                     {accounts.map(acc => (
                       <SelectItem key={acc.id} value={acc.id}>
                         {acc.code} - {acc.name}
