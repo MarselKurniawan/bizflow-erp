@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Pencil, Trash2, Percent } from 'lucide-react';
+import { Plus, Pencil, Trash2, Percent, Receipt, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface TaxRate {
@@ -21,16 +21,15 @@ interface TaxRate {
   account_id: string | null;
   is_default: boolean;
   is_active: boolean;
+  display_name: string | null;
+  show_on_receipt: boolean;
+  calculation_method: string;
+  apply_order: number;
 }
 
 const TaxSettings = () => {
   const { selectedCompany } = useCompany();
-  const { accounts, getAccountsByType } = useAccounts();
-  const liabilityAccounts = accounts.filter(a => 
-    a.account_type === 'liability' || 
-    a.name.toLowerCase().includes('pajak') ||
-    a.name.toLowerCase().includes('tax')
-  );
+  const { accounts } = useAccounts();
 
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,7 +40,11 @@ const TaxSettings = () => {
     rate: 11,
     account_id: '',
     is_default: false,
-    is_active: true
+    is_active: true,
+    display_name: '',
+    show_on_receipt: true,
+    calculation_method: 'add_to_subtotal',
+    apply_order: 1
   });
 
   const fetchTaxRates = async () => {
@@ -68,9 +71,9 @@ const TaxSettings = () => {
     if (!selectedCompany) return;
     
     const defaults = [
-      { name: 'PPN 11%', rate: 11, is_default: true },
-      { name: 'PPN 12%', rate: 12, is_default: false },
-      { name: 'PPh 23 (2%)', rate: 2, is_default: false },
+      { name: 'PPN 11%', rate: 11, is_default: true, display_name: 'PPN 11%', apply_order: 1 },
+      { name: 'PPN 12%', rate: 12, is_default: false, display_name: 'PPN 12%', apply_order: 1 },
+      { name: 'Service Charge', rate: 5, is_default: false, display_name: 'Service 5%', apply_order: 2 },
     ];
 
     const { error } = await supabase
@@ -78,15 +81,17 @@ const TaxSettings = () => {
       .insert(defaults.map(d => ({
         ...d,
         company_id: selectedCompany.id,
-        is_active: true
+        is_active: true,
+        show_on_receipt: true,
+        calculation_method: 'add_to_subtotal'
       })));
 
     if (error) {
-      toast.error('Gagal membuat tarif pajak default');
+      toast.error('Gagal membuat tarif default');
       return;
     }
 
-    toast.success('Tarif pajak default berhasil dibuat');
+    toast.success('Tarif Tax & Services default berhasil dibuat');
     fetchTaxRates();
   };
 
@@ -98,7 +103,11 @@ const TaxSettings = () => {
         rate: tax.rate,
         account_id: tax.account_id || '',
         is_default: tax.is_default,
-        is_active: tax.is_active
+        is_active: tax.is_active,
+        display_name: tax.display_name || '',
+        show_on_receipt: tax.show_on_receipt,
+        calculation_method: tax.calculation_method || 'add_to_subtotal',
+        apply_order: tax.apply_order || 1
       });
     } else {
       setEditingTax(null);
@@ -107,7 +116,11 @@ const TaxSettings = () => {
         rate: 11,
         account_id: '',
         is_default: false,
-        is_active: true
+        is_active: true,
+        display_name: '',
+        show_on_receipt: true,
+        calculation_method: 'add_to_subtotal',
+        apply_order: 1
       });
     }
     setShowDialog(true);
@@ -115,7 +128,7 @@ const TaxSettings = () => {
 
   const handleSave = async () => {
     if (!selectedCompany || !formData.name) {
-      toast.error('Nama pajak harus diisi');
+      toast.error('Nama harus diisi');
       return;
     }
 
@@ -127,40 +140,42 @@ const TaxSettings = () => {
         .eq('company_id', selectedCompany.id);
     }
 
+    const saveData = {
+      name: formData.name,
+      rate: formData.rate,
+      account_id: formData.account_id || null,
+      is_default: formData.is_default,
+      is_active: formData.is_active,
+      display_name: formData.display_name || null,
+      show_on_receipt: formData.show_on_receipt,
+      calculation_method: formData.calculation_method,
+      apply_order: formData.apply_order
+    };
+
     if (editingTax) {
       const { error } = await supabase
         .from('pos_tax_rates')
-        .update({
-          name: formData.name,
-          rate: formData.rate,
-          account_id: formData.account_id || null,
-          is_default: formData.is_default,
-          is_active: formData.is_active
-        })
+        .update(saveData)
         .eq('id', editingTax.id);
 
       if (error) {
-        toast.error('Gagal mengupdate tarif pajak');
+        toast.error('Gagal mengupdate');
         return;
       }
-      toast.success('Tarif pajak berhasil diupdate');
+      toast.success('Berhasil diupdate');
     } else {
       const { error } = await supabase
         .from('pos_tax_rates')
         .insert({
-          company_id: selectedCompany.id,
-          name: formData.name,
-          rate: formData.rate,
-          account_id: formData.account_id || null,
-          is_default: formData.is_default,
-          is_active: formData.is_active
+          ...saveData,
+          company_id: selectedCompany.id
         });
 
       if (error) {
-        toast.error('Gagal menambah tarif pajak');
+        toast.error('Gagal menambah');
         return;
       }
-      toast.success('Tarif pajak berhasil ditambah');
+      toast.success('Berhasil ditambah');
     }
 
     setShowDialog(false);
@@ -222,21 +237,33 @@ const TaxSettings = () => {
     return account ? `${account.code} - ${account.name}` : '-';
   };
 
+  const getMethodLabel = (method: string) => {
+    switch (method) {
+      case 'add_to_subtotal': return 'Tambah ke Subtotal';
+      case 'add_to_total': return 'Tambah ke Total';
+      case 'included_in_price': return 'Termasuk Harga';
+      default: return method;
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Pengaturan Pajak</h1>
-        <p className="text-muted-foreground">Konfigurasi tarif pajak untuk transaksi POS</p>
+        <h1 className="text-3xl font-bold">Tax & Services</h1>
+        <p className="text-muted-foreground">Konfigurasi pajak dan biaya layanan untuk transaksi POS</p>
       </div>
 
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Tarif Pajak</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Calculator className="h-5 w-5" />
+                Tarif Tax & Services
+              </CardTitle>
               <CardDescription>
-                Atur berbagai tarif pajak (PPN, PPh, dll) dan akun pencatatan masing-masing. 
-                Pajak bersifat opsional dan dapat dipilih per transaksi.
+                Atur berbagai tarif pajak (PPN, PPh) dan biaya layanan (Service Charge). 
+                Setiap tarif bisa dikustomisasi tampilan di struk dan metode perhitungannya.
               </CardDescription>
             </div>
             <div className="flex gap-2">
@@ -268,7 +295,8 @@ const TaxSettings = () => {
                 <TableRow>
                   <TableHead>Nama</TableHead>
                   <TableHead className="text-center">Tarif (%)</TableHead>
-                  <TableHead>Akun Pajak</TableHead>
+                  <TableHead>Di Struk</TableHead>
+                  <TableHead>Metode</TableHead>
                   <TableHead className="text-center">Default</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                   <TableHead className="text-center">Aksi</TableHead>
@@ -278,13 +306,32 @@ const TaxSettings = () => {
                 {taxRates.map(tax => (
                   <TableRow key={tax.id}>
                     <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <Percent className="h-4 w-4 text-muted-foreground" />
-                        {tax.name}
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <Percent className="h-4 w-4 text-muted-foreground" />
+                          {tax.name}
+                        </div>
+                        {tax.display_name && tax.display_name !== tax.name && (
+                          <span className="text-xs text-muted-foreground ml-6">
+                            Tampil: {tax.display_name}
+                          </span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-center">{tax.rate}%</TableCell>
-                    <TableCell>{getAccountName(tax.account_id)}</TableCell>
+                    <TableCell>
+                      {tax.show_on_receipt ? (
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                          <Receipt className="h-3 w-3 mr-1" />
+                          Ya
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">Tidak</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-xs">{getMethodLabel(tax.calculation_method)}</span>
+                    </TableCell>
                     <TableCell className="text-center">
                       {tax.is_default ? (
                         <Badge>Default</Badge>
@@ -325,54 +372,117 @@ const TaxSettings = () => {
 
       {/* Add/Edit Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingTax ? 'Edit' : 'Tambah'} Tarif Pajak</DialogTitle>
+            <DialogTitle>{editingTax ? 'Edit' : 'Tambah'} Tax/Service</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Nama Pajak</Label>
-              <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Contoh: PPN 11%, PPh 23"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Nama *</Label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Contoh: PPN 11%, Service Charge"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Tarif (%) *</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={formData.rate}
+                  onChange={(e) => setFormData({ ...formData, rate: parseFloat(e.target.value) || 0 })}
+                  placeholder="11"
+                />
+              </div>
             </div>
+
             <div className="space-y-2">
-              <Label>Tarif (%)</Label>
+              <Label>Nama Tampilan di Struk</Label>
               <Input
-                type="number"
-                min="0"
-                max="100"
-                step="0.1"
-                value={formData.rate}
-                onChange={(e) => setFormData({ ...formData, rate: parseFloat(e.target.value) || 0 })}
-                placeholder="11"
+                value={formData.display_name}
+                onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
+                placeholder="Kosongkan jika sama dengan nama"
               />
+              <p className="text-xs text-muted-foreground">
+                Jika diisi, nama ini akan ditampilkan di struk
+              </p>
             </div>
+
             <div className="space-y-2">
-              <Label>Akun Pajak (Opsional)</Label>
+              <Label>Metode Perhitungan</Label>
               <Select 
-                value={formData.account_id} 
-                onValueChange={(v) => setFormData({ ...formData, account_id: v })}
+                value={formData.calculation_method} 
+                onValueChange={(v) => setFormData({ ...formData, calculation_method: v })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Pilih akun" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tidak ada</SelectItem>
-                  {accounts.map(acc => (
-                    <SelectItem key={acc.id} value={acc.id}>
-                      {acc.code} - {acc.name}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="add_to_subtotal">
+                    Tambah ke Subtotal (Harga × Tarif)
+                  </SelectItem>
+                  <SelectItem value="add_to_total">
+                    Tambah ke Total (Setelah Tax lain)
+                  </SelectItem>
+                  <SelectItem value="included_in_price">
+                    Termasuk dalam Harga
+                  </SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Pajak akan dicatat ke akun ini jika dipilih
+                • Tambah ke Subtotal: Tax dihitung dari subtotal<br />
+                • Tambah ke Total: Tax dihitung setelah tax lain diterapkan<br />
+                • Termasuk Harga: Tax sudah termasuk dalam harga jual
               </p>
             </div>
-            <div className="flex items-center gap-4">
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Urutan Penerapan</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={formData.apply_order}
+                  onChange={(e) => setFormData({ ...formData, apply_order: parseInt(e.target.value) || 1 })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Urutan penerapan jika ada beberapa tax
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Akun Pencatatan</Label>
+                <Select 
+                  value={formData.account_id} 
+                  onValueChange={(v) => setFormData({ ...formData, account_id: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih akun" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Tidak ada</SelectItem>
+                    {accounts.map(acc => (
+                      <SelectItem key={acc.id} value={acc.id}>
+                        {acc.code} - {acc.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-6 pt-2 border-t">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={formData.show_on_receipt}
+                  onCheckedChange={(v) => setFormData({ ...formData, show_on_receipt: v })}
+                />
+                <Label>Tampilkan di Struk</Label>
+              </div>
               <div className="flex items-center gap-2">
                 <Switch
                   checked={formData.is_default}

@@ -59,7 +59,7 @@ const menuItems: MenuItem[] = [
       { label: 'Laporan POS', path: '/pos/reports' },
       { label: 'Penutupan Kas', path: '/pos/cash-closing' },
       { label: 'Metode Pembayaran', path: '/pos/settings' },
-      { label: 'Pengaturan Pajak', path: '/pos/tax-settings' },
+      { label: 'Tax & Services', path: '/pos/tax-settings' },
       { label: 'Pengaturan Struk', path: '/pos/receipt-settings' },
     ]
   },
