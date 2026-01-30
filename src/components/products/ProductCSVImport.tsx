@@ -320,7 +320,7 @@ export const ProductCSVImport: React.FC<ProductCSVImportProps> = ({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex gap-4">
-                <Badge variant="outline" className="text-green-600 border-green-600">
+                <Badge variant="outline" className="text-primary border-primary">
                   <CheckCircle2 className="h-3 w-3 mr-1" />
                   {validCount} Valid
                 </Badge>

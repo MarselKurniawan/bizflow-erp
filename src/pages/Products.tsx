@@ -783,6 +783,13 @@ export const Products: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* CSV Import Dialog */}
+      <ProductCSVImport
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        onImportSuccess={fetchProducts}
+      />
     </div>
   );
 };
