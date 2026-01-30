@@ -108,6 +108,7 @@ const Deposits = () => {
   };
 
   const resetForm = () => {
+    setCompanyName('');
     setCustomerName('');
     setCustomerPhone('');
     setEventName('');
