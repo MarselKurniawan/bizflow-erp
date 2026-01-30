@@ -211,13 +211,13 @@ const Promotions = () => {
     const end = new Date(endDate);
     const now = new Date();
     
-    if (isPast(end)) return { text: 'Berakhir', color: 'text-red-600' };
+    if (isPast(end)) return { text: 'Berakhir', color: 'text-destructive' };
     
     const days = differenceInDays(end, now);
     const hours = differenceInHours(end, now) % 24;
     const minutes = differenceInMinutes(end, now) % 60;
     
-    if (days > 0) return { text: `${days} hari ${hours} jam`, color: 'text-green-600' };
+    if (days > 0) return { text: `${days} hari ${hours} jam`, color: 'text-primary' };
     if (hours > 0) return { text: `${hours} jam ${minutes} menit`, color: 'text-yellow-600' };
     return { text: `${minutes} menit`, color: 'text-orange-600' };
   };
