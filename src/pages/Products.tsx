@@ -74,6 +74,7 @@ export const Products: React.FC = () => {
   
   // Category management state
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [categoryForm, setCategoryForm] = useState({ name: '', description: '' });
   const [deleteCategoryDialogOpen, setDeleteCategoryDialogOpen] = useState(false);
