@@ -59,8 +59,8 @@ const TaxSettings = () => {
       .eq('company_id', selectedCompany.id)
       .order('name');
     
-    if (!error) {
-      setTaxRates(data || []);
+    if (!error && data) {
+      setTaxRates(data.map(d => ({ ...d, category: (d.category || 'tax') as 'tax' | 'service' })));
     }
     setIsLoading(false);
   };
