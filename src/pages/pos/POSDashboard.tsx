@@ -651,8 +651,8 @@ const POSDashboard = () => {
     const itemDiscount = items.reduce((sum, item) => sum + item.discount_amount, 0);
     const itemTax = items.reduce((sum, item) => sum + item.tax_amount, 0);
     const itemTotalBeforeRounding = items.reduce((sum, item) => sum + item.total, 0);
-    const itemRounding = itemTotalBeforeRounding - roundToHundred(itemTotalBeforeRounding);
-    const itemTotal = roundToHundred(itemTotalBeforeRounding);
+    const itemRounding = itemTotalBeforeRounding - roundDecimals(itemTotalBeforeRounding);
+    const itemTotal = roundDecimals(itemTotalBeforeRounding);
     
     const taxDisplay = transaction.selectedTaxDisplay || '';
 

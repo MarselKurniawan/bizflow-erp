@@ -387,6 +387,14 @@ const Deposits = () => {
             <DialogTitle>Buat Deposit Baru</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nama Perusahaan</Label>
+              <Input
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="Nama perusahaan / instansi (opsional)"
+              />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Nama Pelanggan *</Label>
