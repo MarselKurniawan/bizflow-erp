@@ -355,10 +355,10 @@ const POSCashClosing = () => {
         <div class="row"><span></span><span class="row-value">${formatNumber(data.subtotal)}</span></div>
         <div class="row"><span class="row-label">Discount</span></div>
         <div class="row"><span></span><span class="row-value">${formatNumber(data.discountAmount)}</span></div>
-        <div class="row"><span class="row-label">PB1</span></div>
-        <div class="row"><span></span><span class="row-value">${formatNumber(data.taxAmount)}</span></div>
-        <div class="row"><span class="row-label">SERVICE CHARGE</span></div>
-        <div class="row"><span></span><span class="row-value">${formatNumber(data.serviceAmount)}</span></div>
+        ${data.taxServiceBreakdown.map(item => `
+          <div class="row"><span class="row-label">${item.name.toUpperCase()}</span></div>
+          <div class="row"><span></span><span class="row-value">${formatNumber(item.total)}</span></div>
+        `).join('')}
         <div class="row"><span class="row-label">ROUNDING</span></div>
         <div class="row"><span></span><span class="row-value">${formatNumber(data.roundingAmount)}</span></div>
         <div class="divider"></div>
