@@ -388,6 +388,25 @@ const TaxSettings = () => {
             <DialogTitle>{editingTax ? 'Edit' : 'Tambah'} Tax/Service</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Kategori *</Label>
+              <Select 
+                value={formData.category} 
+                onValueChange={(v: 'tax' | 'service') => setFormData({ ...formData, category: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="tax">Pajak (Tax)</SelectItem>
+                  <SelectItem value="service">Service Charge</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Pilih kategori untuk pengelompokan di laporan penutupan kas
+              </p>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Nama *</Label>
