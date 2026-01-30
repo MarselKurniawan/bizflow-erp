@@ -344,8 +344,7 @@ export const ProductCSVImport: React.FC<ProductCSVImportProps> = ({
                     <TableHead>Kode Barang</TableHead>
                     <TableHead>Nama Barang</TableHead>
                     <TableHead>Jenis</TableHead>
-                    <TableHead className="text-right">Harga Jual</TableHead>
-                    <TableHead>Satuan</TableHead>
+                    <TableHead className="text-right">Harga Jual Satuan</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
