@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Edit2, Trash2, Package, Archive, Settings, FolderOpen } from 'lucide-react';
+import { Plus, Search, Filter, Edit2, Trash2, Package, Archive, Settings, FolderOpen, Upload } from 'lucide-react';
+import { ProductCSVImport } from '@/components/products/ProductCSVImport';
 import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAccounts } from '@/hooks/useAccounts';
@@ -73,6 +74,7 @@ export const Products: React.FC = () => {
   
   // Category management state
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [categoryForm, setCategoryForm] = useState({ name: '', description: '' });
   const [deleteCategoryDialogOpen, setDeleteCategoryDialogOpen] = useState(false);
@@ -366,6 +368,12 @@ export const Products: React.FC = () => {
         </div>
         
         <div className="flex gap-2">
+          {/* Import CSV Button */}
+          <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}>
+            <Upload className="w-4 h-4 mr-2" />
+            Import CSV
+          </Button>
+          
           {/* Category Management Button */}
           <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
             <DialogTrigger asChild>
@@ -775,6 +783,13 @@ export const Products: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* CSV Import Dialog */}
+      <ProductCSVImport
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        onImportSuccess={fetchProducts}
+      />
     </div>
   );
 };
