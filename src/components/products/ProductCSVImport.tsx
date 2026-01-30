@@ -396,7 +396,7 @@ export const ProductCSVImport: React.FC<ProductCSVImportProps> = ({
         {importStep === 'result' && (
           <div className="space-y-6 py-4">
             <div className="text-center space-y-4">
-              <CheckCircle2 className="h-16 w-16 text-green-600 mx-auto" />
+              <CheckCircle2 className="h-16 w-16 text-primary mx-auto" />
               <div>
                 <h3 className="text-lg font-semibold">Import Selesai</h3>
                 <p className="text-muted-foreground">
