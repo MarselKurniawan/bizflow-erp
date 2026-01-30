@@ -274,7 +274,7 @@ const Promotions = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-green-600">{activeCount}</p>
+            <p className="text-2xl font-bold text-primary">{activeCount}</p>
           </CardContent>
         </Card>
         <Card>
