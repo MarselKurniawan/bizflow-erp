@@ -727,14 +727,12 @@ const POSCashClosing = () => {
                     <span>Discount</span>
                     <span className="font-medium">-{formatCurrency(sessionStats.discountAmount)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>PB1 (Pajak)</span>
-                    <span className="font-medium">{formatCurrency(sessionStats.taxAmount)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Service Charge</span>
-                    <span className="font-medium">{formatCurrency(sessionStats.serviceAmount)}</span>
-                  </div>
+                  {sessionStats.taxServiceBreakdown.map((item, idx) => (
+                    <div key={idx} className="flex justify-between">
+                      <span>{item.name}</span>
+                      <span className="font-medium">{formatCurrency(item.total)}</span>
+                    </div>
+                  ))}
                   <div className="flex justify-between">
                     <span>Rounding</span>
                     <span className="font-medium">{formatCurrency(sessionStats.roundingAmount)}</span>
