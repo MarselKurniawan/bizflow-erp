@@ -348,7 +348,7 @@ const Deposits = () => {
             <CardTitle className="text-sm font-medium text-muted-foreground">Selesai Bulan Ini</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-green-600">{totalCompleted}</p>
+            <p className="text-2xl font-bold text-primary">{totalCompleted}</p>
           </CardContent>
         </Card>
       </div>
