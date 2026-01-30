@@ -153,7 +153,8 @@ const TaxSettings = () => {
       display_name: formData.display_name || null,
       show_on_receipt: formData.show_on_receipt,
       calculation_method: formData.calculation_method,
-      apply_order: formData.apply_order
+      apply_order: formData.apply_order,
+      category: formData.category
     };
 
     if (editingTax) {
