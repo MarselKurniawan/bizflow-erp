@@ -1081,16 +1081,20 @@ export type Database = {
           company_name: string | null
           created_at: string
           created_by: string | null
+          customer_id: string | null
           customer_name: string
           customer_phone: string | null
           deposit_amount: number
           deposit_number: string
           event_date: string
           event_name: string
+          folio_number: string | null
           id: string
           journal_entry_id: string | null
           notes: string | null
+          open_table_id: string | null
           payment_method_id: string | null
+          pos_transaction_id: string | null
           remaining_amount: number | null
           status: string
           total_estimated: number | null
@@ -1102,16 +1106,20 @@ export type Database = {
           company_name?: string | null
           created_at?: string
           created_by?: string | null
+          customer_id?: string | null
           customer_name: string
           customer_phone?: string | null
           deposit_amount: number
           deposit_number: string
           event_date: string
           event_name: string
+          folio_number?: string | null
           id?: string
           journal_entry_id?: string | null
           notes?: string | null
+          open_table_id?: string | null
           payment_method_id?: string | null
+          pos_transaction_id?: string | null
           remaining_amount?: number | null
           status?: string
           total_estimated?: number | null
@@ -1123,16 +1131,20 @@ export type Database = {
           company_name?: string | null
           created_at?: string
           created_by?: string | null
+          customer_id?: string | null
           customer_name?: string
           customer_phone?: string | null
           deposit_amount?: number
           deposit_number?: string
           event_date?: string
           event_name?: string
+          folio_number?: string | null
           id?: string
           journal_entry_id?: string | null
           notes?: string | null
+          open_table_id?: string | null
           payment_method_id?: string | null
+          pos_transaction_id?: string | null
           remaining_amount?: number | null
           status?: string
           total_estimated?: number | null
@@ -1154,6 +1166,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "pos_deposits_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "pos_deposits_journal_entry_id_fkey"
             columns: ["journal_entry_id"]
             isOneToOne: false
@@ -1161,10 +1180,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "pos_deposits_open_table_id_fkey"
+            columns: ["open_table_id"]
+            isOneToOne: false
+            referencedRelation: "pos_open_tables"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "pos_deposits_payment_method_id_fkey"
             columns: ["payment_method_id"]
             isOneToOne: false
             referencedRelation: "pos_payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_deposits_pos_transaction_id_fkey"
+            columns: ["pos_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "pos_transactions"
             referencedColumns: ["id"]
           },
         ]
@@ -1335,6 +1368,80 @@ export type Database = {
           },
           {
             foreignKeyName: "pos_payment_methods_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_promotions: {
+        Row: {
+          applies_to: string | null
+          applies_to_ids: string[] | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          discount_type: string
+          discount_value: number
+          end_date: string
+          id: string
+          is_active: boolean | null
+          max_discount: number | null
+          min_purchase: number | null
+          name: string
+          promo_code: string | null
+          start_date: string
+          updated_at: string
+          usage_limit: number | null
+          used_count: number | null
+        }
+        Insert: {
+          applies_to?: string | null
+          applies_to_ids?: string[] | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          end_date: string
+          id?: string
+          is_active?: boolean | null
+          max_discount?: number | null
+          min_purchase?: number | null
+          name: string
+          promo_code?: string | null
+          start_date?: string
+          updated_at?: string
+          usage_limit?: number | null
+          used_count?: number | null
+        }
+        Update: {
+          applies_to?: string | null
+          applies_to_ids?: string[] | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          end_date?: string
+          id?: string
+          is_active?: boolean | null
+          max_discount?: number | null
+          min_purchase?: number | null
+          name?: string
+          promo_code?: string | null
+          start_date?: string
+          updated_at?: string
+          usage_limit?: number | null
+          used_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_promotions_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
@@ -1514,10 +1621,13 @@ export type Database = {
           customer_name: string | null
           customer_phone: string | null
           discount_amount: number | null
+          guest_count: number | null
           id: string
           invoice_number: string | null
           notes: string | null
           revenue_account_id: string | null
+          rounding_amount: number | null
+          service_amount: number | null
           status: string | null
           subtotal: number | null
           tax_amount: number | null
@@ -1538,10 +1648,13 @@ export type Database = {
           customer_name?: string | null
           customer_phone?: string | null
           discount_amount?: number | null
+          guest_count?: number | null
           id?: string
           invoice_number?: string | null
           notes?: string | null
           revenue_account_id?: string | null
+          rounding_amount?: number | null
+          service_amount?: number | null
           status?: string | null
           subtotal?: number | null
           tax_amount?: number | null
@@ -1562,10 +1675,13 @@ export type Database = {
           customer_name?: string | null
           customer_phone?: string | null
           discount_amount?: number | null
+          guest_count?: number | null
           id?: string
           invoice_number?: string | null
           notes?: string | null
           revenue_account_id?: string | null
+          rounding_amount?: number | null
+          service_amount?: number | null
           status?: string | null
           subtotal?: number | null
           tax_amount?: number | null
