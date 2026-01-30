@@ -72,8 +72,8 @@ const Promotions = () => {
       .eq('company_id', selectedCompany.id)
       .order('created_at', { ascending: false });
     
-    if (!error) {
-      setPromotions(data || []);
+    if (!error && data) {
+      setPromotions(data as Promotion[]);
     }
     setIsLoading(false);
   };
