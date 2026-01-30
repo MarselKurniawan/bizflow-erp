@@ -324,6 +324,11 @@ const TaxSettings = () => {
                         )}
                       </div>
                     </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant={tax.category === 'tax' ? 'default' : 'secondary'}>
+                        {tax.category === 'tax' ? 'Pajak' : 'Service'}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-center">{tax.rate}%</TableCell>
                     <TableCell>
                       {tax.show_on_receipt ? (
