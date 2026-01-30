@@ -140,7 +140,6 @@ export const ProductCSVImport: React.FC<ProductCSVImportProps> = ({
         const name = row[1]?.trim() || '';
         const productTypeStr = row[2]?.trim() || 'Persediaan';
         const priceStr = row[3]?.trim() || '0';
-        const unit = row[4]?.trim() || 'pcs';
 
         if (!sku) errors.push('Kode Barang wajib diisi');
         if (!name) errors.push('Nama Barang wajib diisi');
