@@ -73,9 +73,9 @@ const TaxSettings = () => {
     if (!selectedCompany) return;
     
     const defaults = [
-      { name: 'PPN 11%', rate: 11, is_default: true, display_name: 'PPN 11%', apply_order: 1 },
-      { name: 'PPN 12%', rate: 12, is_default: false, display_name: 'PPN 12%', apply_order: 1 },
-      { name: 'Service Charge', rate: 5, is_default: false, display_name: 'Service 5%', apply_order: 2 },
+      { name: 'PPN 11%', rate: 11, is_default: true, display_name: 'PPN 11%', apply_order: 1, category: 'tax' },
+      { name: 'PPN 12%', rate: 12, is_default: false, display_name: 'PPN 12%', apply_order: 1, category: 'tax' },
+      { name: 'Service Charge', rate: 5, is_default: false, display_name: 'Service 5%', apply_order: 2, category: 'service' },
     ];
 
     const { error } = await supabase
