@@ -56,6 +56,7 @@ const menuItems: MenuItem[] = [
       { label: 'Riwayat Transaksi', path: '/pos/transactions' },
       { label: 'Open Table', path: '/pos/open-tables' },
       { label: 'Deposit / DP', path: '/pos/deposits' },
+      { label: 'Promosi', path: '/pos/promotions' },
       { label: 'Laporan POS', path: '/pos/reports' },
       { label: 'Penutupan Kas', path: '/pos/cash-closing' },
       { label: 'Metode Pembayaran', path: '/pos/settings' },
