@@ -34,6 +34,12 @@ interface PaymentSummary {
   total: number;
 }
 
+interface TaxServiceBreakdown {
+  name: string;
+  category: 'tax' | 'service';
+  total: number;
+}
+
 interface SessionStats {
   totalSales: number;
   totalTransactions: number;
@@ -49,6 +55,7 @@ interface SessionStats {
   avgPerInvoice: number;
   complimentTotal: number;
   complimentCount: number;
+  taxServiceBreakdown: TaxServiceBreakdown[];
 }
 
 const POSCashClosing = () => {
