@@ -12,7 +12,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Eye, DollarSign, Calendar, FileText } from 'lucide-react';
+import { SearchableSelect } from '@/components/ui/searchable-select';
+import { Plus, Search, Eye, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/formatters';
 import { format } from 'date-fns';
@@ -21,9 +22,11 @@ import { id } from 'date-fns/locale';
 interface Deposit {
   id: string;
   deposit_number: string;
+  folio_number: string | null;
   company_name: string | null;
   customer_name: string;
   customer_phone: string | null;
+  customer_id: string | null;
   event_name: string;
   event_date: string;
   deposit_amount: number;
@@ -39,6 +42,13 @@ interface PaymentMethod {
   name: string;
   code: string;
   account_id: string | null;
+}
+
+interface Customer {
+  id: string;
+  name: string;
+  code: string;
+  phone: string | null;
 }
 
 const Deposits = () => {
