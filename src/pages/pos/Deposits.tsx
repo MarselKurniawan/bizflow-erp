@@ -434,7 +434,7 @@ const Deposits = () => {
           <DialogHeader>
             <DialogTitle>Buat Deposit Baru</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-2">
             <div className="space-y-2">
               <Label>Nama Perusahaan</Label>
               <Input
@@ -443,6 +443,17 @@ const Deposits = () => {
                 placeholder="Nama perusahaan / instansi (opsional)"
               />
             </div>
+            
+            <div className="space-y-2">
+              <Label>Pilih dari Database Pelanggan</Label>
+              <SearchableSelect
+                options={customers.map(c => ({ value: c.id, label: `${c.name} (${c.code})` }))}
+                value={selectedCustomerId}
+                onValueChange={handleCustomerSelect}
+                placeholder="Cari pelanggan..."
+              />
+            </div>
+            
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Nama Pelanggan *</Label>
