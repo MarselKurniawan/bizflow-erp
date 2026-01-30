@@ -561,27 +561,40 @@ const POSDashboard = () => {
         });
       }
 
-      // COGS entries
+      // COGS entries - MUST create both debit HPP and credit Inventory to balance
       if (totalCogs > 0) {
-        const { data: cogsAccount } = await supabase
+        // Search for COGS/HPP account with multiple patterns
+        const { data: cogsAccounts } = await supabase
           .from('chart_of_accounts')
-          .select('id')
+          .select('id, name')
           .eq('company_id', selectedCompany.id)
           .eq('account_type', 'expense')
-          .ilike('name', '%hpp%')
-          .limit(1)
-          .single();
+          .eq('is_active', true);
 
-        const { data: inventoryAccount } = await supabase
+        // Find account matching COGS patterns
+        const cogsAccount = cogsAccounts?.find(acc => 
+          acc.name.toLowerCase().includes('hpp') || 
+          acc.name.toLowerCase().includes('harga pokok') ||
+          acc.name.toLowerCase().includes('cogs') ||
+          acc.name.toLowerCase().includes('cost of')
+        );
+
+        const { data: inventoryAccounts } = await supabase
           .from('chart_of_accounts')
-          .select('id')
+          .select('id, name')
           .eq('company_id', selectedCompany.id)
           .eq('account_type', 'asset')
-          .ilike('name', '%persediaan%')
-          .limit(1)
-          .single();
+          .eq('is_active', true);
 
-        if (cogsAccount) {
+        // Find account matching inventory patterns
+        const inventoryAccount = inventoryAccounts?.find(acc =>
+          acc.name.toLowerCase().includes('persediaan') ||
+          acc.name.toLowerCase().includes('inventory') ||
+          acc.name.toLowerCase().includes('stock')
+        );
+
+        // Only add COGS entries if BOTH accounts exist (to maintain balance)
+        if (cogsAccount && inventoryAccount) {
           journalLines.push({
             journal_entry_id: journalEntry.id,
             account_id: cogsAccount.id,
@@ -589,9 +602,7 @@ const POSDashboard = () => {
             credit_amount: 0,
             description: 'HPP penjualan'
           });
-        }
 
-        if (inventoryAccount) {
           journalLines.push({
             journal_entry_id: journalEntry.id,
             account_id: inventoryAccount.id,
@@ -599,6 +610,8 @@ const POSDashboard = () => {
             credit_amount: totalCogs,
             description: 'Pengurangan persediaan'
           });
+        } else {
+          console.warn('Missing COGS or Inventory account - COGS entries skipped to avoid unbalanced journal');
         }
       }
 
