@@ -126,6 +126,61 @@ const POSCashClosing = () => {
     const serviceAmount = completedTransactions.reduce((sum, t) => sum + ((t as any).service_amount || 0), 0);
     const roundingAmount = completedTransactions.reduce((sum, t) => sum + ((t as any).rounding_amount || 0), 0);
 
+    // Fetch tax rates configuration for breakdown labels
+    const { data: taxRates } = await supabase
+      .from('pos_tax_rates')
+      .select('name, display_name, category, rate')
+      .eq('company_id', selectedCompany?.id || '')
+      .eq('is_active', true)
+      .order('apply_order');
+
+    // Build dynamic tax/service breakdown
+    const taxServiceBreakdown: TaxServiceBreakdown[] = [];
+    
+    // Group by category and use actual names from settings
+    const taxes = taxRates?.filter(r => r.category === 'tax') || [];
+    const services = taxRates?.filter(r => r.category === 'service') || [];
+    
+    // For taxes, sum them up with names
+    if (taxes.length > 0 && taxAmount > 0) {
+      // If there's only one tax, show it with its name
+      if (taxes.length === 1) {
+        taxServiceBreakdown.push({
+          name: taxes[0].display_name || taxes[0].name,
+          category: 'tax',
+          total: taxAmount
+        });
+      } else {
+        // Multiple taxes - show combined with generic label or first one
+        taxServiceBreakdown.push({
+          name: taxes.map(t => t.display_name || t.name).join(' + '),
+          category: 'tax',
+          total: taxAmount
+        });
+      }
+    } else if (taxAmount > 0) {
+      taxServiceBreakdown.push({ name: 'Pajak', category: 'tax', total: taxAmount });
+    }
+
+    // For services, sum them up with names
+    if (services.length > 0 && serviceAmount > 0) {
+      if (services.length === 1) {
+        taxServiceBreakdown.push({
+          name: services[0].display_name || services[0].name,
+          category: 'service',
+          total: serviceAmount
+        });
+      } else {
+        taxServiceBreakdown.push({
+          name: services.map(s => s.display_name || s.name).join(' + '),
+          category: 'service',
+          total: serviceAmount
+        });
+      }
+    } else if (serviceAmount > 0) {
+      taxServiceBreakdown.push({ name: 'Service', category: 'service', total: serviceAmount });
+    }
+
     // Get payment breakdown
     const { data: payments } = await supabase
       .from('pos_transaction_payments')
@@ -178,7 +233,8 @@ const POSCashClosing = () => {
       totalInvoices,
       avgPerInvoice,
       complimentTotal,
-      complimentCount
+      complimentCount,
+      taxServiceBreakdown
     });
   };
 
