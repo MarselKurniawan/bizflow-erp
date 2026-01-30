@@ -152,7 +152,7 @@ export const ProductCSVImport: React.FC<ProductCSVImportProps> = ({
           name,
           product_type,
           unit_price,
-          unit: unit || 'pcs',
+          unit: 'pcs', // default unit
           isValid: errors.length === 0,
           errors,
           rowIndex: index + 2, // +2 because of 0-index and header row
