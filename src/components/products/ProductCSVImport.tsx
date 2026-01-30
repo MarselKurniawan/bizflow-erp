@@ -52,11 +52,11 @@ export const ProductCSVImport: React.FC<ProductCSVImportProps> = ({
   const [importResult, setImportResult] = useState<{ success: number; failed: number }>({ success: 0, failed: 0 });
 
   const downloadTemplate = () => {
-    const headers = ['Kode Barang', 'Nama Barang', 'Jenis Barang', 'Harga Jual', 'Satuan'];
+    const headers = ['Kode Barang', 'Nama Barang', 'Jenis Barang', 'Harga Jual Satuan'];
     const sampleData = [
-      ['PRD-001', 'Nasi Goreng Seafood', 'Persediaan', '35000', 'pcs'],
-      ['PRD-002', 'Es Teh Manis', 'Persediaan', '8000', 'pcs'],
-      ['SVC-001', 'Jasa Delivery', 'Non Persediaan', '10000', 'pcs'],
+      ['PRD-001', 'Nasi Goreng Seafood', 'Persediaan', '35000'],
+      ['PRD-002', 'Es Teh Manis', 'Persediaan', '8000'],
+      ['SVC-001', 'Jasa Delivery', 'Non Persediaan', '10000'],
     ];
 
     const csvContent = [
