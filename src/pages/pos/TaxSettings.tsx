@@ -299,6 +299,7 @@ const TaxSettings = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nama</TableHead>
+                  <TableHead className="text-center">Kategori</TableHead>
                   <TableHead className="text-center">Tarif (%)</TableHead>
                   <TableHead>Di Struk</TableHead>
                   <TableHead>Metode</TableHead>
