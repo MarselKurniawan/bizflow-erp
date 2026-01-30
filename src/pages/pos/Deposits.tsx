@@ -147,6 +147,7 @@ const Deposits = () => {
         .insert({
           company_id: selectedCompany.id,
           deposit_number: depositNumber,
+          company_name: companyName.trim() || null,
           customer_name: customerName.trim(),
           customer_phone: customerPhone.trim() || null,
           event_name: eventName.trim(),
