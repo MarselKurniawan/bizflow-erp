@@ -229,8 +229,8 @@ const Promotions = () => {
     
     if (!promo.is_active) return <Badge variant="secondary">Nonaktif</Badge>;
     if (isPast(end)) return <Badge variant="destructive">Berakhir</Badge>;
-    if (isFuture(start)) return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Terjadwal</Badge>;
-    return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Aktif</Badge>;
+    if (isFuture(start)) return <Badge variant="outline">Terjadwal</Badge>;
+    return <Badge variant="default">Aktif</Badge>;
   };
 
   const filteredPromotions = promotions.filter(p =>
