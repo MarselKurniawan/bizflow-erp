@@ -332,7 +332,7 @@ const Deposits = () => {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Deposit Pending</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-yellow-600">{formatCurrency(totalPending)}</p>
+            <p className="text-2xl font-bold text-warning">{formatCurrency(totalPending)}</p>
           </CardContent>
         </Card>
         <Card>
