@@ -52,11 +52,11 @@ export const ProductCSVImport: React.FC<ProductCSVImportProps> = ({
   const [importResult, setImportResult] = useState<{ success: number; failed: number }>({ success: 0, failed: 0 });
 
   const downloadTemplate = () => {
-    const headers = ['Kode Barang', 'Nama Barang', 'Jenis Barang', 'Harga Jual', 'Satuan'];
+    const headers = ['Kode Barang', 'Nama Barang', 'Jenis Barang', 'Harga Jual Satuan'];
     const sampleData = [
-      ['PRD-001', 'Nasi Goreng Seafood', 'Persediaan', '35000', 'pcs'],
-      ['PRD-002', 'Es Teh Manis', 'Persediaan', '8000', 'pcs'],
-      ['SVC-001', 'Jasa Delivery', 'Non Persediaan', '10000', 'pcs'],
+      ['PRD-001', 'Nasi Goreng Seafood', 'Persediaan', '35000'],
+      ['PRD-002', 'Es Teh Manis', 'Persediaan', '8000'],
+      ['SVC-001', 'Jasa Delivery', 'Non Persediaan', '10000'],
     ];
 
     const csvContent = [
@@ -140,7 +140,6 @@ export const ProductCSVImport: React.FC<ProductCSVImportProps> = ({
         const name = row[1]?.trim() || '';
         const productTypeStr = row[2]?.trim() || 'Persediaan';
         const priceStr = row[3]?.trim() || '0';
-        const unit = row[4]?.trim() || 'pcs';
 
         if (!sku) errors.push('Kode Barang wajib diisi');
         if (!name) errors.push('Nama Barang wajib diisi');
@@ -153,7 +152,7 @@ export const ProductCSVImport: React.FC<ProductCSVImportProps> = ({
           name,
           product_type,
           unit_price,
-          unit: unit || 'pcs',
+          unit: 'pcs', // default unit
           isValid: errors.length === 0,
           errors,
           rowIndex: index + 2, // +2 because of 0-index and header row
@@ -277,7 +276,7 @@ export const ProductCSVImport: React.FC<ProductCSVImportProps> = ({
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Format CSV yang didukung: Kode Barang, Nama Barang, Jenis Barang (Persediaan/Non Persediaan), Harga Jual, Satuan
+                Format CSV yang didukung: Kode Barang, Nama Barang, Jenis Barang (Persediaan/Non Persediaan), Harga Jual Satuan
               </AlertDescription>
             </Alert>
 
@@ -345,8 +344,7 @@ export const ProductCSVImport: React.FC<ProductCSVImportProps> = ({
                     <TableHead>Kode Barang</TableHead>
                     <TableHead>Nama Barang</TableHead>
                     <TableHead>Jenis</TableHead>
-                    <TableHead className="text-right">Harga Jual</TableHead>
-                    <TableHead>Satuan</TableHead>
+                    <TableHead className="text-right">Harga Jual Satuan</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -365,7 +363,6 @@ export const ProductCSVImport: React.FC<ProductCSVImportProps> = ({
                       <TableCell className="text-right">
                         {new Intl.NumberFormat('id-ID').format(product.unit_price)}
                       </TableCell>
-                      <TableCell>{product.unit}</TableCell>
                       <TableCell>
                         {product.isValid ? (
                           <CheckCircle2 className="h-4 w-4 text-primary" />
