@@ -368,7 +368,7 @@ export const ProductCSVImport: React.FC<ProductCSVImportProps> = ({
                       <TableCell>{product.unit}</TableCell>
                       <TableCell>
                         {product.isValid ? (
-                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          <CheckCircle2 className="h-4 w-4 text-primary" />
                         ) : (
                           <span className="text-xs text-destructive">{product.errors.join(', ')}</span>
                         )}
