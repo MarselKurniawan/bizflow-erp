@@ -25,6 +25,7 @@ interface TaxRate {
   show_on_receipt: boolean;
   calculation_method: string;
   apply_order: number;
+  category: 'tax' | 'service';
 }
 
 const TaxSettings = () => {
