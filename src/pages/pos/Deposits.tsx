@@ -449,8 +449,9 @@ const Deposits = () => {
               <SearchableSelect
                 options={customers.map(c => ({ value: c.id, label: `${c.name} (${c.code})` }))}
                 value={selectedCustomerId}
-                onValueChange={handleCustomerSelect}
+                onChange={handleCustomerSelect}
                 placeholder="Cari pelanggan..."
+              />
               />
             </div>
             
