@@ -54,10 +54,11 @@ interface Customer {
 const Deposits = () => {
   const { selectedCompany } = useCompany();
   const { user } = useAuth();
-  const { accounts, getCashBankAccounts } = useAccounts();
+  const { accounts } = useAccounts();
   
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -65,6 +66,7 @@ const Deposits = () => {
   const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
   
   // Form state
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -87,7 +89,7 @@ const Deposits = () => {
       .order('created_at', { ascending: false });
     
     if (!error) {
-      setDeposits(data || []);
+      setDeposits((data || []) as Deposit[]);
     }
     setIsLoading(false);
   };
@@ -104,9 +106,22 @@ const Deposits = () => {
     setPaymentMethods(data || []);
   };
 
+  const fetchCustomers = async () => {
+    if (!selectedCompany) return;
+    
+    const { data } = await supabase
+      .from('customers')
+      .select('id, name, code, phone')
+      .eq('company_id', selectedCompany.id)
+      .order('name');
+    
+    setCustomers(data || []);
+  };
+
   useEffect(() => {
     fetchDeposits();
     fetchPaymentMethods();
+    fetchCustomers();
   }, [selectedCompany]);
 
   const generateDepositNumber = async () => {
@@ -118,7 +133,26 @@ const Deposits = () => {
     return `DP-${today}-${String((count || 0) + 1).padStart(4, '0')}`;
   };
 
+  const generateFolioNumber = async () => {
+    const today = format(new Date(), 'yyyyMMdd');
+    const { count } = await supabase
+      .from('pos_deposits')
+      .select('*', { count: 'exact', head: true })
+      .eq('company_id', selectedCompany?.id);
+    return `FOLIO-${today}-${String((count || 0) + 1).padStart(4, '0')}`;
+  };
+
+  const handleCustomerSelect = (customerId: string) => {
+    setSelectedCustomerId(customerId);
+    const customer = customers.find(c => c.id === customerId);
+    if (customer) {
+      setCustomerName(customer.name);
+      setCustomerPhone(customer.phone || '');
+    }
+  };
+
   const resetForm = () => {
+    setSelectedCustomerId('');
     setCompanyName('');
     setCustomerName('');
     setCustomerPhone('');
