@@ -21,6 +21,7 @@ import { id } from 'date-fns/locale';
 interface Deposit {
   id: string;
   deposit_number: string;
+  company_name: string | null;
   customer_name: string;
   customer_phone: string | null;
   event_name: string;
