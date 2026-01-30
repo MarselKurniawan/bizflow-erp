@@ -276,7 +276,7 @@ export const ProductCSVImport: React.FC<ProductCSVImportProps> = ({
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Format CSV yang didukung: Kode Barang, Nama Barang, Jenis Barang (Persediaan/Non Persediaan), Harga Jual, Satuan
+                Format CSV yang didukung: Kode Barang, Nama Barang, Jenis Barang (Persediaan/Non Persediaan), Harga Jual Satuan
               </AlertDescription>
             </Alert>
 
