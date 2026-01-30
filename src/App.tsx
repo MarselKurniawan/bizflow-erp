@@ -56,6 +56,7 @@ import ReceiptSettings from "./pages/pos/ReceiptSettings";
 import TaxSettings from "./pages/pos/TaxSettings";
 import OpenTables from "./pages/pos/OpenTables";
 import Deposits from "./pages/pos/Deposits";
+import Promotions from "./pages/pos/Promotions";
 import FixedAssets from "./pages/assets/FixedAssets";
 import NotFound from "./pages/NotFound";
 
