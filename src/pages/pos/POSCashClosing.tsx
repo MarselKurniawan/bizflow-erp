@@ -34,6 +34,12 @@ interface PaymentSummary {
   total: number;
 }
 
+interface TaxServiceBreakdown {
+  name: string;
+  category: 'tax' | 'service';
+  total: number;
+}
+
 interface SessionStats {
   totalSales: number;
   totalTransactions: number;
@@ -49,6 +55,7 @@ interface SessionStats {
   avgPerInvoice: number;
   complimentTotal: number;
   complimentCount: number;
+  taxServiceBreakdown: TaxServiceBreakdown[];
 }
 
 const POSCashClosing = () => {
@@ -119,6 +126,61 @@ const POSCashClosing = () => {
     const serviceAmount = completedTransactions.reduce((sum, t) => sum + ((t as any).service_amount || 0), 0);
     const roundingAmount = completedTransactions.reduce((sum, t) => sum + ((t as any).rounding_amount || 0), 0);
 
+    // Fetch tax rates configuration for breakdown labels
+    const { data: taxRates } = await supabase
+      .from('pos_tax_rates')
+      .select('name, display_name, category, rate')
+      .eq('company_id', selectedCompany?.id || '')
+      .eq('is_active', true)
+      .order('apply_order');
+
+    // Build dynamic tax/service breakdown
+    const taxServiceBreakdown: TaxServiceBreakdown[] = [];
+    
+    // Group by category and use actual names from settings
+    const taxes = taxRates?.filter(r => r.category === 'tax') || [];
+    const services = taxRates?.filter(r => r.category === 'service') || [];
+    
+    // For taxes, sum them up with names
+    if (taxes.length > 0 && taxAmount > 0) {
+      // If there's only one tax, show it with its name
+      if (taxes.length === 1) {
+        taxServiceBreakdown.push({
+          name: taxes[0].display_name || taxes[0].name,
+          category: 'tax',
+          total: taxAmount
+        });
+      } else {
+        // Multiple taxes - show combined with generic label or first one
+        taxServiceBreakdown.push({
+          name: taxes.map(t => t.display_name || t.name).join(' + '),
+          category: 'tax',
+          total: taxAmount
+        });
+      }
+    } else if (taxAmount > 0) {
+      taxServiceBreakdown.push({ name: 'Pajak', category: 'tax', total: taxAmount });
+    }
+
+    // For services, sum them up with names
+    if (services.length > 0 && serviceAmount > 0) {
+      if (services.length === 1) {
+        taxServiceBreakdown.push({
+          name: services[0].display_name || services[0].name,
+          category: 'service',
+          total: serviceAmount
+        });
+      } else {
+        taxServiceBreakdown.push({
+          name: services.map(s => s.display_name || s.name).join(' + '),
+          category: 'service',
+          total: serviceAmount
+        });
+      }
+    } else if (serviceAmount > 0) {
+      taxServiceBreakdown.push({ name: 'Service', category: 'service', total: serviceAmount });
+    }
+
     // Get payment breakdown
     const { data: payments } = await supabase
       .from('pos_transaction_payments')
@@ -171,7 +233,8 @@ const POSCashClosing = () => {
       totalInvoices,
       avgPerInvoice,
       complimentTotal,
-      complimentCount
+      complimentCount,
+      taxServiceBreakdown
     });
   };
 
@@ -292,10 +355,10 @@ const POSCashClosing = () => {
         <div class="row"><span></span><span class="row-value">${formatNumber(data.subtotal)}</span></div>
         <div class="row"><span class="row-label">Discount</span></div>
         <div class="row"><span></span><span class="row-value">${formatNumber(data.discountAmount)}</span></div>
-        <div class="row"><span class="row-label">PB1</span></div>
-        <div class="row"><span></span><span class="row-value">${formatNumber(data.taxAmount)}</span></div>
-        <div class="row"><span class="row-label">SERVICE CHARGE</span></div>
-        <div class="row"><span></span><span class="row-value">${formatNumber(data.serviceAmount)}</span></div>
+        ${data.taxServiceBreakdown.map(item => `
+          <div class="row"><span class="row-label">${item.name.toUpperCase()}</span></div>
+          <div class="row"><span></span><span class="row-value">${formatNumber(item.total)}</span></div>
+        `).join('')}
         <div class="row"><span class="row-label">ROUNDING</span></div>
         <div class="row"><span></span><span class="row-value">${formatNumber(data.roundingAmount)}</span></div>
         <div class="divider"></div>
@@ -495,14 +558,12 @@ const POSCashClosing = () => {
                       <span>Discount</span>
                       <span className="font-medium text-destructive">-{formatCurrency(sessionStats.discountAmount)}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>PB1 (Pajak)</span>
-                      <span className="font-medium">{formatCurrency(sessionStats.taxAmount)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Service Charge</span>
-                      <span className="font-medium">{formatCurrency(sessionStats.serviceAmount)}</span>
-                    </div>
+                    {sessionStats.taxServiceBreakdown.map((item, idx) => (
+                      <div key={idx} className="flex justify-between">
+                        <span>{item.name}</span>
+                        <span className="font-medium">{formatCurrency(item.total)}</span>
+                      </div>
+                    ))}
                     <div className="flex justify-between">
                       <span>Rounding</span>
                       <span className="font-medium">{formatCurrency(sessionStats.roundingAmount)}</span>
@@ -666,14 +727,12 @@ const POSCashClosing = () => {
                     <span>Discount</span>
                     <span className="font-medium">-{formatCurrency(sessionStats.discountAmount)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>PB1 (Pajak)</span>
-                    <span className="font-medium">{formatCurrency(sessionStats.taxAmount)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Service Charge</span>
-                    <span className="font-medium">{formatCurrency(sessionStats.serviceAmount)}</span>
-                  </div>
+                  {sessionStats.taxServiceBreakdown.map((item, idx) => (
+                    <div key={idx} className="flex justify-between">
+                      <span>{item.name}</span>
+                      <span className="font-medium">{formatCurrency(item.total)}</span>
+                    </div>
+                  ))}
                   <div className="flex justify-between">
                     <span>Rounding</span>
                     <span className="font-medium">{formatCurrency(sessionStats.roundingAmount)}</span>

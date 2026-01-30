@@ -1454,6 +1454,7 @@ export type Database = {
           account_id: string | null
           apply_order: number | null
           calculation_method: string | null
+          category: string
           company_id: string
           created_at: string
           display_name: string | null
@@ -1468,6 +1469,7 @@ export type Database = {
           account_id?: string | null
           apply_order?: number | null
           calculation_method?: string | null
+          category?: string
           company_id: string
           created_at?: string
           display_name?: string | null
@@ -1482,6 +1484,7 @@ export type Database = {
           account_id?: string | null
           apply_order?: number | null
           calculation_method?: string | null
+          category?: string
           company_id?: string
           created_at?: string
           display_name?: string | null

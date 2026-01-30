@@ -25,6 +25,7 @@ interface TaxRate {
   show_on_receipt: boolean;
   calculation_method: string;
   apply_order: number;
+  category: 'tax' | 'service';
 }
 
 const TaxSettings = () => {
@@ -44,7 +45,8 @@ const TaxSettings = () => {
     display_name: '',
     show_on_receipt: true,
     calculation_method: 'add_to_subtotal',
-    apply_order: 1
+    apply_order: 1,
+    category: 'tax' as 'tax' | 'service'
   });
 
   const fetchTaxRates = async () => {
@@ -57,8 +59,8 @@ const TaxSettings = () => {
       .eq('company_id', selectedCompany.id)
       .order('name');
     
-    if (!error) {
-      setTaxRates(data || []);
+    if (!error && data) {
+      setTaxRates(data.map(d => ({ ...d, category: (d.category || 'tax') as 'tax' | 'service' })));
     }
     setIsLoading(false);
   };
@@ -71,9 +73,9 @@ const TaxSettings = () => {
     if (!selectedCompany) return;
     
     const defaults = [
-      { name: 'PPN 11%', rate: 11, is_default: true, display_name: 'PPN 11%', apply_order: 1 },
-      { name: 'PPN 12%', rate: 12, is_default: false, display_name: 'PPN 12%', apply_order: 1 },
-      { name: 'Service Charge', rate: 5, is_default: false, display_name: 'Service 5%', apply_order: 2 },
+      { name: 'PPN 11%', rate: 11, is_default: true, display_name: 'PPN 11%', apply_order: 1, category: 'tax' },
+      { name: 'PPN 12%', rate: 12, is_default: false, display_name: 'PPN 12%', apply_order: 1, category: 'tax' },
+      { name: 'Service Charge', rate: 5, is_default: false, display_name: 'Service 5%', apply_order: 2, category: 'service' },
     ];
 
     const { error } = await supabase
@@ -107,7 +109,8 @@ const TaxSettings = () => {
         display_name: tax.display_name || '',
         show_on_receipt: tax.show_on_receipt,
         calculation_method: tax.calculation_method || 'add_to_subtotal',
-        apply_order: tax.apply_order || 1
+        apply_order: tax.apply_order || 1,
+        category: tax.category || 'tax'
       });
     } else {
       setEditingTax(null);
@@ -120,7 +123,8 @@ const TaxSettings = () => {
         display_name: '',
         show_on_receipt: true,
         calculation_method: 'add_to_subtotal',
-        apply_order: 1
+        apply_order: 1,
+        category: 'tax'
       });
     }
     setShowDialog(true);
@@ -149,7 +153,8 @@ const TaxSettings = () => {
       display_name: formData.display_name || null,
       show_on_receipt: formData.show_on_receipt,
       calculation_method: formData.calculation_method,
-      apply_order: formData.apply_order
+      apply_order: formData.apply_order,
+      category: formData.category
     };
 
     if (editingTax) {
@@ -294,6 +299,7 @@ const TaxSettings = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nama</TableHead>
+                  <TableHead className="text-center">Kategori</TableHead>
                   <TableHead className="text-center">Tarif (%)</TableHead>
                   <TableHead>Di Struk</TableHead>
                   <TableHead>Metode</TableHead>
@@ -317,6 +323,11 @@ const TaxSettings = () => {
                           </span>
                         )}
                       </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant={tax.category === 'tax' ? 'default' : 'secondary'}>
+                        {tax.category === 'tax' ? 'Pajak' : 'Service'}
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-center">{tax.rate}%</TableCell>
                     <TableCell>
@@ -377,6 +388,25 @@ const TaxSettings = () => {
             <DialogTitle>{editingTax ? 'Edit' : 'Tambah'} Tax/Service</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Kategori *</Label>
+              <Select 
+                value={formData.category} 
+                onValueChange={(v: 'tax' | 'service') => setFormData({ ...formData, category: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="tax">Pajak (Tax)</SelectItem>
+                  <SelectItem value="service">Service Charge</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Pilih kategori untuk pengelompokan di laporan penutupan kas
+              </p>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Nama *</Label>
