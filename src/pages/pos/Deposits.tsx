@@ -184,6 +184,7 @@ const Deposits = () => {
     setIsSubmitting(true);
     try {
       const depositNumber = await generateDepositNumber();
+      const folioNumber = await generateFolioNumber();
       const selectedMethod = paymentMethods.find(m => m.id === paymentMethodId);
       
       // Create deposit record
@@ -192,9 +193,11 @@ const Deposits = () => {
         .insert({
           company_id: selectedCompany.id,
           deposit_number: depositNumber,
+          folio_number: folioNumber,
           company_name: companyName.trim() || null,
           customer_name: customerName.trim(),
           customer_phone: customerPhone.trim() || null,
+          customer_id: selectedCustomerId || null,
           event_name: eventName.trim(),
           event_date: eventDate,
           deposit_amount: dpAmount,
