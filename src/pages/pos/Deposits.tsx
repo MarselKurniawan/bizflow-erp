@@ -21,6 +21,7 @@ import { id } from 'date-fns/locale';
 interface Deposit {
   id: string;
   deposit_number: string;
+  company_name: string | null;
   customer_name: string;
   customer_phone: string | null;
   event_name: string;
@@ -54,6 +55,7 @@ const Deposits = () => {
   const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
   
   // Form state
+  const [companyName, setCompanyName] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [eventName, setEventName] = useState('');
@@ -107,6 +109,7 @@ const Deposits = () => {
   };
 
   const resetForm = () => {
+    setCompanyName('');
     setCustomerName('');
     setCustomerPhone('');
     setEventName('');
@@ -145,6 +148,7 @@ const Deposits = () => {
         .insert({
           company_id: selectedCompany.id,
           deposit_number: depositNumber,
+          company_name: companyName.trim() || null,
           customer_name: customerName.trim(),
           customer_phone: customerPhone.trim() || null,
           event_name: eventName.trim(),
@@ -384,6 +388,14 @@ const Deposits = () => {
             <DialogTitle>Buat Deposit Baru</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nama Perusahaan</Label>
+              <Input
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="Nama perusahaan / instansi (opsional)"
+              />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Nama Pelanggan *</Label>
@@ -486,6 +498,10 @@ const Deposits = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
                   {getStatusBadge(selectedDeposit.status)}
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Perusahaan</p>
+                  <p className="font-medium">{selectedDeposit.company_name || '-'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Pelanggan</p>
