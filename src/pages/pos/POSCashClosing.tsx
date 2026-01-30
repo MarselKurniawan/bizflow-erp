@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,9 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { Lock, Unlock, Eye, Calculator, Printer } from 'lucide-react';
+import { Lock, Unlock, Eye, Calculator, Printer, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/formatters';
 
@@ -33,6 +34,23 @@ interface PaymentSummary {
   total: number;
 }
 
+interface SessionStats {
+  totalSales: number;
+  totalTransactions: number;
+  paymentSummary: PaymentSummary[];
+  subtotal: number;
+  discountAmount: number;
+  taxAmount: number;
+  serviceAmount: number;
+  roundingAmount: number;
+  totalGuests: number;
+  avgPerGuest: number;
+  totalInvoices: number;
+  avgPerInvoice: number;
+  complimentTotal: number;
+  complimentCount: number;
+}
+
 const POSCashClosing = () => {
   const { selectedCompany } = useCompany();
   const { user } = useAuth();
@@ -46,23 +64,8 @@ const POSCashClosing = () => {
   
   const [closingBalance, setClosingBalance] = useState('');
   const [closingNotes, setClosingNotes] = useState('');
-  const [sessionStats, setSessionStats] = useState<{
-    totalSales: number;
-    totalTransactions: number;
-    paymentSummary: PaymentSummary[];
-    // Extended stats for detailed report
-    subtotal: number;
-    discountAmount: number;
-    taxAmount: number;
-    serviceAmount: number;
-    roundingAmount: number;
-    totalGuests: number;
-    avgPerGuest: number;
-    totalInvoices: number;
-    avgPerInvoice: number;
-    complimentTotal: number;
-    complimentCount: number;
-  } | null>(null);
+  const [sessionStats, setSessionStats] = useState<SessionStats | null>(null);
+  const [openTablesCount, setOpenTablesCount] = useState(0);
 
   const fetchSessions = async () => {
     if (!selectedCompany) return;
@@ -82,15 +85,28 @@ const POSCashClosing = () => {
     setIsLoading(false);
   };
 
+  const checkOpenTables = async () => {
+    if (!selectedCompany) return;
+    
+    const { count } = await supabase
+      .from('pos_open_tables')
+      .select('*', { count: 'exact', head: true })
+      .eq('company_id', selectedCompany.id)
+      .eq('status', 'open');
+    
+    setOpenTablesCount(count || 0);
+  };
+
   useEffect(() => {
     fetchSessions();
+    checkOpenTables();
   }, [selectedCompany]);
 
   const fetchSessionStats = async (sessionId: string) => {
     // Get transactions for this session with full details
     const { data: transactions } = await supabase
       .from('pos_transactions')
-      .select('id, total_amount, subtotal, discount_amount, tax_amount, status')
+      .select('id, total_amount, subtotal, discount_amount, tax_amount, service_amount, rounding_amount, guest_count, status')
       .eq('cash_session_id', sessionId)
       .eq('status', 'completed');
     
@@ -100,11 +116,8 @@ const POSCashClosing = () => {
     const subtotal = completedTransactions.reduce((sum, t) => sum + (t.subtotal || 0), 0);
     const discountAmount = completedTransactions.reduce((sum, t) => sum + (t.discount_amount || 0), 0);
     const taxAmount = completedTransactions.reduce((sum, t) => sum + (t.tax_amount || 0), 0);
-    
-    // Calculate service charge and rounding (estimated from difference)
-    const calculatedTotal = subtotal - discountAmount + taxAmount;
-    const roundingAmount = totalSales - calculatedTotal;
-    const serviceAmount = 0; // Would need separate tracking for service charge
+    const serviceAmount = completedTransactions.reduce((sum, t) => sum + ((t as any).service_amount || 0), 0);
+    const roundingAmount = completedTransactions.reduce((sum, t) => sum + ((t as any).rounding_amount || 0), 0);
 
     // Get payment breakdown
     const { data: payments } = await supabase
@@ -126,17 +139,23 @@ const POSCashClosing = () => {
       total
     }));
 
-    // Guest stats (estimate 1 guest per transaction for now, can be enhanced)
-    const totalGuests = totalTransactions;
+    // Guest stats
+    const totalGuests = completedTransactions.reduce((sum, t) => sum + ((t as any).guest_count || 1), 0);
     const avgPerGuest = totalGuests > 0 ? totalSales / totalGuests : 0;
 
     // Invoice stats
     const totalInvoices = totalTransactions;
     const avgPerInvoice = totalInvoices > 0 ? totalSales / totalInvoices : 0;
 
-    // Compliment (void/cancelled transactions) - for now set to 0
-    const complimentTotal = 0;
-    const complimentCount = 0;
+    // Compliment (void/cancelled transactions)
+    const { data: voidTransactions } = await supabase
+      .from('pos_transactions')
+      .select('total_amount')
+      .eq('cash_session_id', sessionId)
+      .eq('status', 'void');
+    
+    const complimentTotal = voidTransactions?.reduce((sum, t) => sum + (t.total_amount || 0), 0) || 0;
+    const complimentCount = voidTransactions?.length || 0;
 
     setSessionStats({ 
       totalSales, 
@@ -158,23 +177,36 @@ const POSCashClosing = () => {
 
   const openCloseDialog = async () => {
     if (!currentSession) return;
+    
+    // Check for open tables first
+    await checkOpenTables();
+    
+    if (openTablesCount > 0) {
+      toast.error(`Masih ada ${openTablesCount} meja yang masih buka. Tutup semua meja terlebih dahulu.`);
+      return;
+    }
+    
     await fetchSessionStats(currentSession.id);
-    
-    // Calculate expected balance
-    const cashPayments = sessionStats?.paymentSummary.find(p => 
-      p.method_name.toLowerCase().includes('tunai') || p.method_name.toLowerCase().includes('cash')
-    )?.total || 0;
-    
-    const expected = currentSession.opening_balance + cashPayments;
-    setClosingBalance(expected.toString());
     setShowCloseDialog(true);
   };
 
+  useEffect(() => {
+    if (showCloseDialog && currentSession && sessionStats) {
+      // Calculate expected cash balance
+      const cashPayments = sessionStats.paymentSummary.find(p => 
+        p.method_name.toLowerCase().includes('tunai') || p.method_name.toLowerCase().includes('cash')
+      )?.total || 0;
+      
+      const expected = currentSession.opening_balance + cashPayments;
+      setClosingBalance(expected.toString());
+    }
+  }, [showCloseDialog, sessionStats, currentSession]);
+
   const closeSession = async (shouldPrint: boolean = false) => {
-    if (!currentSession) return;
+    if (!currentSession || !sessionStats) return;
     
     const closing = parseFloat(closingBalance) || 0;
-    const cashPayments = sessionStats?.paymentSummary.find(p => 
+    const cashPayments = sessionStats.paymentSummary.find(p => 
       p.method_name.toLowerCase().includes('tunai') || p.method_name.toLowerCase().includes('cash')
     )?.total || 0;
     const expected = currentSession.opening_balance + cashPayments;
@@ -206,20 +238,7 @@ const POSCashClosing = () => {
         closingBalance: closing,
         expectedBalance: expected,
         difference: diff,
-        totalSales: sessionStats?.totalSales || 0,
-        totalTransactions: sessionStats?.totalTransactions || 0,
-        paymentSummary: sessionStats?.paymentSummary || [],
-        subtotal: sessionStats?.subtotal || 0,
-        discountAmount: sessionStats?.discountAmount || 0,
-        taxAmount: sessionStats?.taxAmount || 0,
-        serviceAmount: sessionStats?.serviceAmount || 0,
-        roundingAmount: sessionStats?.roundingAmount || 0,
-        totalGuests: sessionStats?.totalGuests || 0,
-        avgPerGuest: sessionStats?.avgPerGuest || 0,
-        totalInvoices: sessionStats?.totalInvoices || 0,
-        avgPerInvoice: sessionStats?.avgPerInvoice || 0,
-        complimentTotal: sessionStats?.complimentTotal || 0,
-        complimentCount: sessionStats?.complimentCount || 0
+        ...sessionStats
       });
     }
 
@@ -230,27 +249,13 @@ const POSCashClosing = () => {
     fetchSessions();
   };
 
-  const printClosingReport = (data: {
+  const printClosingReport = (data: SessionStats & {
     openedAt: string;
     closedAt: string;
     openingBalance: number;
     closingBalance: number;
     expectedBalance: number;
     difference: number;
-    totalSales: number;
-    totalTransactions: number;
-    paymentSummary: PaymentSummary[];
-    subtotal: number;
-    discountAmount: number;
-    taxAmount: number;
-    serviceAmount: number;
-    roundingAmount: number;
-    totalGuests: number;
-    avgPerGuest: number;
-    totalInvoices: number;
-    avgPerInvoice: number;
-    complimentTotal: number;
-    complimentCount: number;
   }) => {
     const formatNumber = (num: number) => new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
     
@@ -265,7 +270,8 @@ const POSCashClosing = () => {
           .header p { margin: 2px 0; }
           .section-title { font-weight: bold; margin: 8px 0 4px 0; text-decoration: underline; }
           .row { display: flex; justify-content: space-between; margin: 2px 0; }
-          .row-indent { padding-left: 8px; }
+          .row-label { flex: 1; }
+          .row-value { text-align: right; min-width: 100px; }
           .divider { border-top: 1px dashed #000; margin: 6px 0; }
           .total { font-weight: bold; }
           @media print { 
@@ -282,45 +288,45 @@ const POSCashClosing = () => {
         </div>
         
         <div class="section-title">Revenue</div>
-        <div class="row row-indent"><span>Subtotal</span></div>
-        <div class="row"><span></span><span>${formatNumber(data.subtotal)}</span></div>
-        <div class="row row-indent"><span>Discount</span></div>
-        <div class="row"><span></span><span>${formatNumber(data.discountAmount)}</span></div>
-        <div class="row row-indent"><span>PB1</span></div>
-        <div class="row"><span></span><span>${formatNumber(data.taxAmount)}</span></div>
-        <div class="row row-indent"><span>SERVICE CHARGE</span></div>
-        <div class="row"><span></span><span>${formatNumber(data.serviceAmount)}</span></div>
-        <div class="row row-indent"><span>ROUNDING</span></div>
-        <div class="row"><span></span><span>${formatNumber(data.roundingAmount)}</span></div>
+        <div class="row"><span class="row-label">Subtotal</span></div>
+        <div class="row"><span></span><span class="row-value">${formatNumber(data.subtotal)}</span></div>
+        <div class="row"><span class="row-label">Discount</span></div>
+        <div class="row"><span></span><span class="row-value">${formatNumber(data.discountAmount)}</span></div>
+        <div class="row"><span class="row-label">PB1</span></div>
+        <div class="row"><span></span><span class="row-value">${formatNumber(data.taxAmount)}</span></div>
+        <div class="row"><span class="row-label">SERVICE CHARGE</span></div>
+        <div class="row"><span></span><span class="row-value">${formatNumber(data.serviceAmount)}</span></div>
+        <div class="row"><span class="row-label">ROUNDING</span></div>
+        <div class="row"><span></span><span class="row-value">${formatNumber(data.roundingAmount)}</span></div>
         <div class="divider"></div>
-        <div class="row row-indent"><span>Total</span></div>
-        <div class="row"><span></span><span>${formatNumber(data.totalSales)}</span></div>
+        <div class="row total"><span class="row-label">Total</span></div>
+        <div class="row total"><span></span><span class="row-value">${formatNumber(data.totalSales)}</span></div>
         
         <div style="margin-top: 10px;">
-          <div class="row row-indent"><span>Total Guest</span><span>${data.totalGuests}</span></div>
-          <div class="row row-indent"><span>Avg. per Guest</span></div>
-          <div class="row"><span></span><span>${formatNumber(data.avgPerGuest)}</span></div>
+          <div class="row"><span class="row-label">Total Guest</span><span class="row-value">${data.totalGuests}</span></div>
+          <div class="row"><span class="row-label">Avg. per Guest</span></div>
+          <div class="row"><span></span><span class="row-value">${formatNumber(data.avgPerGuest)}</span></div>
         </div>
         
         <div style="margin-top: 6px;">
-          <div class="row row-indent"><span>No. of Inv.</span><span>${data.totalInvoices}</span></div>
-          <div class="row row-indent"><span>Avg. per Inv.</span></div>
-          <div class="row"><span></span><span>${formatNumber(data.avgPerInvoice)}</span></div>
+          <div class="row"><span class="row-label">No. of Inv.</span><span class="row-value">${data.totalInvoices}</span></div>
+          <div class="row"><span class="row-label">Avg. per Inv.</span></div>
+          <div class="row"><span></span><span class="row-value">${formatNumber(data.avgPerInvoice)}</span></div>
         </div>
         
         <div class="section-title">Payments</div>
         ${data.paymentSummary.map(p => `
-          <div class="row row-indent"><span>${p.method_name.toUpperCase()}</span></div>
-          <div class="row"><span></span><span>${formatNumber(p.total)}</span></div>
+          <div class="row"><span class="row-label">${p.method_name.toUpperCase()}</span></div>
+          <div class="row"><span></span><span class="row-value">${formatNumber(p.total)}</span></div>
         `).join('')}
         <div class="divider"></div>
-        <div class="row row-indent"><span>Total</span></div>
-        <div class="row"><span></span><span>${formatNumber(data.paymentSummary.reduce((sum, p) => sum + p.total, 0))}</span></div>
+        <div class="row total"><span class="row-label">Total</span></div>
+        <div class="row total"><span></span><span class="row-value">${formatNumber(data.paymentSummary.reduce((sum, p) => sum + p.total, 0))}</span></div>
         
         <div class="section-title">Compliment</div>
-        <div class="row row-indent"><span>Total Compliment</span><span>${formatNumber(data.complimentTotal)}</span></div>
-        <div class="row row-indent"><span>No. of Inv</span><span>${data.complimentCount}</span></div>
-        <div class="row row-indent"><span>Avg per Inv</span><span>${formatNumber(data.complimentCount > 0 ? data.complimentTotal / data.complimentCount : 0)}</span></div>
+        <div class="row"><span class="row-label">Total Compliment</span><span class="row-value">${formatNumber(data.complimentTotal)}</span></div>
+        <div class="row"><span class="row-label">No. of Inv</span><span class="row-value">${data.complimentCount}</span></div>
+        <div class="row"><span class="row-label">Avg per Inv</span><span class="row-value">${formatNumber(data.complimentCount > 0 ? data.complimentTotal / data.complimentCount : 0)}</span></div>
         
       </body>
       </html>
@@ -344,20 +350,7 @@ const POSCashClosing = () => {
       closingBalance: session.closing_balance || 0,
       expectedBalance: session.expected_balance || 0,
       difference: session.difference || 0,
-      totalSales: sessionStats.totalSales,
-      totalTransactions: sessionStats.totalTransactions,
-      paymentSummary: sessionStats.paymentSummary,
-      subtotal: sessionStats.subtotal,
-      discountAmount: sessionStats.discountAmount,
-      taxAmount: sessionStats.taxAmount,
-      serviceAmount: sessionStats.serviceAmount,
-      roundingAmount: sessionStats.roundingAmount,
-      totalGuests: sessionStats.totalGuests,
-      avgPerGuest: sessionStats.avgPerGuest,
-      totalInvoices: sessionStats.totalInvoices,
-      avgPerInvoice: sessionStats.avgPerInvoice,
-      complimentTotal: sessionStats.complimentTotal,
-      complimentCount: sessionStats.complimentCount
+      ...sessionStats
     });
   };
 
@@ -367,12 +360,24 @@ const POSCashClosing = () => {
     setShowDetailsDialog(true);
   };
 
+  const totalPayments = sessionStats?.paymentSummary.reduce((sum, p) => sum + p.total, 0) || 0;
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Penutupan Kas</h1>
         <p className="text-muted-foreground">Rekonsiliasi dan penutupan sesi kasir harian</p>
       </div>
+
+      {/* Open Tables Warning */}
+      {openTablesCount > 0 && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            Terdapat <strong>{openTablesCount} meja</strong> yang masih aktif. Tutup semua meja terlebih dahulu sebelum menutup kasir.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Current Session Card */}
       {currentSession && (
@@ -381,14 +386,14 @@ const POSCashClosing = () => {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
-                  <Unlock className="h-5 w-5 text-green-600" />
+                  <Unlock className="h-5 w-5 text-primary" />
                   Sesi Aktif
                 </CardTitle>
                 <CardDescription>
                   Dibuka: {format(new Date(currentSession.opened_at), 'dd MMMM yyyy HH:mm', { locale: id })}
                 </CardDescription>
               </div>
-              <Button onClick={openCloseDialog}>
+              <Button onClick={openCloseDialog} disabled={openTablesCount > 0}>
                 <Lock className="h-4 w-4 mr-2" />
                 Tutup Sesi
               </Button>
@@ -423,7 +428,7 @@ const POSCashClosing = () => {
                   <TableHead>Tanggal</TableHead>
                   <TableHead className="text-right">Saldo Awal</TableHead>
                   <TableHead className="text-right">Saldo Akhir</TableHead>
-                  <TableHead className="text-right">Ekspektasi</TableHead>
+                  <TableHead className="text-right">Total Penjualan</TableHead>
                   <TableHead className="text-right">Selisih</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                   <TableHead className="text-center">Aksi</TableHead>
@@ -440,11 +445,13 @@ const POSCashClosing = () => {
                       {session.closing_balance !== null ? formatCurrency(session.closing_balance) : '-'}
                     </TableCell>
                     <TableCell className="text-right">
-                      {session.expected_balance !== null ? formatCurrency(session.expected_balance) : '-'}
+                      {session.expected_balance !== null 
+                        ? formatCurrency((session.expected_balance || 0) - session.opening_balance) 
+                        : '-'}
                     </TableCell>
                     <TableCell className="text-right">
                       {session.difference !== null ? (
-                        <span className={session.difference === 0 ? 'text-green-600' : session.difference > 0 ? 'text-blue-600' : 'text-red-600'}>
+                        <span className={session.difference === 0 ? 'text-primary' : session.difference > 0 ? 'text-primary' : 'text-destructive'}>
                           {session.difference > 0 ? '+' : ''}{formatCurrency(session.difference)}
                         </span>
                       ) : '-'}
@@ -469,40 +476,95 @@ const POSCashClosing = () => {
 
       {/* Close Session Dialog */}
       <Dialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Tutup Sesi Kasir</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {sessionStats && (
               <>
-                <div className="grid grid-cols-2 gap-4">
-                  <Card>
-                    <CardContent className="pt-4">
-                      <p className="text-sm text-muted-foreground">Total Penjualan</p>
-                      <p className="text-xl font-bold">{formatCurrency(sessionStats.totalSales)}</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-4">
-                      <p className="text-sm text-muted-foreground">Jumlah Transaksi</p>
-                      <p className="text-xl font-bold">{sessionStats.totalTransactions}</p>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <div>
-                  <Label className="text-sm font-medium">Rincian Pembayaran</Label>
-                  <div className="mt-2 space-y-1">
-                    {sessionStats.paymentSummary.map((p, i) => (
-                      <div key={i} className="flex justify-between text-sm">
-                        <span>{p.method_name}</span>
-                        <span className="font-medium">{formatCurrency(p.total)}</span>
-                      </div>
-                    ))}
+                {/* Revenue Section */}
+                <div className="border rounded-lg p-4">
+                  <h3 className="font-semibold mb-3">Revenue</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Subtotal</span>
+                      <span className="font-medium">{formatCurrency(sessionStats.subtotal)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Discount</span>
+                      <span className="font-medium text-destructive">-{formatCurrency(sessionStats.discountAmount)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>PB1 (Pajak)</span>
+                      <span className="font-medium">{formatCurrency(sessionStats.taxAmount)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Service Charge</span>
+                      <span className="font-medium">{formatCurrency(sessionStats.serviceAmount)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Rounding</span>
+                      <span className="font-medium">{formatCurrency(sessionStats.roundingAmount)}</span>
+                    </div>
+                    <div className="border-t pt-2 flex justify-between font-bold">
+                      <span>Total</span>
+                      <span className="text-primary">{formatCurrency(sessionStats.totalSales)}</span>
+                    </div>
                   </div>
                 </div>
 
+                {/* Stats Section */}
+                <div className="grid grid-cols-2 gap-4">
+                  <Card>
+                    <CardContent className="pt-4">
+                      <p className="text-sm text-muted-foreground">Total Guest</p>
+                      <p className="text-xl font-bold">{sessionStats.totalGuests}</p>
+                      <p className="text-xs text-muted-foreground">Avg: {formatCurrency(sessionStats.avgPerGuest)}</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4">
+                      <p className="text-sm text-muted-foreground">No. of Invoice</p>
+                      <p className="text-xl font-bold">{sessionStats.totalInvoices}</p>
+                      <p className="text-xs text-muted-foreground">Avg: {formatCurrency(sessionStats.avgPerInvoice)}</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Payments Section */}
+                <div className="border rounded-lg p-4">
+                  <h3 className="font-semibold mb-3">Payments</h3>
+                  <div className="space-y-2 text-sm">
+                    {sessionStats.paymentSummary.map((p, i) => (
+                      <div key={i} className="flex justify-between">
+                        <span>{p.method_name.toUpperCase()}</span>
+                        <span className="font-medium">{formatCurrency(p.total)}</span>
+                      </div>
+                    ))}
+                    <div className="border-t pt-2 flex justify-between font-bold">
+                      <span>Total</span>
+                      <span className="text-primary">{formatCurrency(totalPayments)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Compliment Section */}
+                <div className="border rounded-lg p-4">
+                  <h3 className="font-semibold mb-3">Compliment (Void)</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Total Compliment</span>
+                      <span className="font-medium">{formatCurrency(sessionStats.complimentTotal)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>No. of Inv</span>
+                      <span className="font-medium">{sessionStats.complimentCount}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Cash Calculation */}
                 <div className="border-t pt-4">
                   <div className="flex justify-between mb-2">
                     <span className="text-sm">Saldo Awal</span>
@@ -519,7 +581,7 @@ const POSCashClosing = () => {
                     </span>
                   </div>
                   <div className="flex justify-between font-bold">
-                    <span>= Ekspektasi Kas</span>
+                    <span>= Ekspektasi Kas Tunai</span>
                     <span>
                       {formatCurrency(
                         (currentSession?.opening_balance || 0) + 
@@ -571,7 +633,7 @@ const POSCashClosing = () => {
 
       {/* Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Detail Sesi</DialogTitle>
           </DialogHeader>
@@ -592,40 +654,80 @@ const POSCashClosing = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <Card>
-                  <CardContent className="pt-4">
-                    <p className="text-sm text-muted-foreground">Total Penjualan</p>
-                    <p className="text-xl font-bold">{formatCurrency(sessionStats.totalSales)}</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-4">
-                    <p className="text-sm text-muted-foreground">Jumlah Transaksi</p>
-                    <p className="text-xl font-bold">{sessionStats.totalTransactions}</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium">Rincian Pembayaran</Label>
-                <div className="mt-2 space-y-1">
-                  {sessionStats.paymentSummary.map((p, i) => (
-                    <div key={i} className="flex justify-between text-sm">
-                      <span>{p.method_name}</span>
-                      <span className="font-medium">{formatCurrency(p.total)}</span>
-                    </div>
-                  ))}
+              {/* Revenue Section */}
+              <div className="border rounded-lg p-4">
+                <h3 className="font-semibold mb-3">Revenue</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span className="font-medium">{formatCurrency(sessionStats.subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Discount</span>
+                    <span className="font-medium">-{formatCurrency(sessionStats.discountAmount)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>PB1 (Pajak)</span>
+                    <span className="font-medium">{formatCurrency(sessionStats.taxAmount)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Service Charge</span>
+                    <span className="font-medium">{formatCurrency(sessionStats.serviceAmount)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Rounding</span>
+                    <span className="font-medium">{formatCurrency(sessionStats.roundingAmount)}</span>
+                  </div>
+                  <div className="border-t pt-2 flex justify-between font-bold">
+                    <span>Total</span>
+                    <span className="text-primary">{formatCurrency(sessionStats.totalSales)}</span>
+                  </div>
                 </div>
               </div>
 
+              {/* Stats */}
+              <div className="grid grid-cols-2 gap-4">
+                <Card>
+                  <CardContent className="pt-4">
+                    <p className="text-sm text-muted-foreground">Total Guest</p>
+                    <p className="text-xl font-bold">{sessionStats.totalGuests}</p>
+                    <p className="text-xs text-muted-foreground">Avg: {formatCurrency(sessionStats.avgPerGuest)}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4">
+                    <p className="text-sm text-muted-foreground">No. of Invoice</p>
+                    <p className="text-xl font-bold">{sessionStats.totalInvoices}</p>
+                    <p className="text-xs text-muted-foreground">Avg: {formatCurrency(sessionStats.avgPerInvoice)}</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Payments */}
+              <div className="border rounded-lg p-4">
+                <h3 className="font-semibold mb-3">Payments</h3>
+                <div className="space-y-2 text-sm">
+                  {sessionStats.paymentSummary.map((p, i) => (
+                    <div key={i} className="flex justify-between">
+                      <span>{p.method_name.toUpperCase()}</span>
+                      <span className="font-medium">{formatCurrency(p.total)}</span>
+                    </div>
+                  ))}
+                  <div className="border-t pt-2 flex justify-between font-bold">
+                    <span>Total</span>
+                    <span className="text-primary">{formatCurrency(sessionStats.paymentSummary.reduce((sum, p) => sum + p.total, 0))}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cash Balance */}
               <div className="border-t pt-4 space-y-2">
                 <div className="flex justify-between">
                   <span>Saldo Awal</span>
                   <span>{formatCurrency(selectedSession.opening_balance)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Ekspektasi</span>
+                  <span>Ekspektasi Kas</span>
                   <span>{formatCurrency(selectedSession.expected_balance || 0)}</span>
                 </div>
                 <div className="flex justify-between">
@@ -635,8 +737,8 @@ const POSCashClosing = () => {
                 <div className="flex justify-between font-bold">
                   <span>Selisih</span>
                   <span className={
-                    selectedSession.difference === 0 ? 'text-green-600' : 
-                    (selectedSession.difference || 0) > 0 ? 'text-blue-600' : 'text-red-600'
+                    selectedSession.difference === 0 ? 'text-primary' : 
+                    (selectedSession.difference || 0) > 0 ? 'text-primary' : 'text-destructive'
                   }>
                     {(selectedSession.difference || 0) > 0 ? '+' : ''}
                     {formatCurrency(selectedSession.difference || 0)}

@@ -12,7 +12,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Eye, DollarSign, Calendar, FileText } from 'lucide-react';
+import { SearchableSelect } from '@/components/ui/searchable-select';
+import { Plus, Search, Eye, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/formatters';
 import { format } from 'date-fns';
@@ -21,9 +22,11 @@ import { id } from 'date-fns/locale';
 interface Deposit {
   id: string;
   deposit_number: string;
+  folio_number: string | null;
   company_name: string | null;
   customer_name: string;
   customer_phone: string | null;
+  customer_id: string | null;
   event_name: string;
   event_date: string;
   deposit_amount: number;
@@ -41,13 +44,21 @@ interface PaymentMethod {
   account_id: string | null;
 }
 
+interface Customer {
+  id: string;
+  name: string;
+  code: string;
+  phone: string | null;
+}
+
 const Deposits = () => {
   const { selectedCompany } = useCompany();
   const { user } = useAuth();
-  const { accounts, getCashBankAccounts } = useAccounts();
+  const { accounts } = useAccounts();
   
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -55,6 +66,7 @@ const Deposits = () => {
   const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
   
   // Form state
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -77,7 +89,7 @@ const Deposits = () => {
       .order('created_at', { ascending: false });
     
     if (!error) {
-      setDeposits(data || []);
+      setDeposits((data || []) as Deposit[]);
     }
     setIsLoading(false);
   };
@@ -94,9 +106,22 @@ const Deposits = () => {
     setPaymentMethods(data || []);
   };
 
+  const fetchCustomers = async () => {
+    if (!selectedCompany) return;
+    
+    const { data } = await supabase
+      .from('customers')
+      .select('id, name, code, phone')
+      .eq('company_id', selectedCompany.id)
+      .order('name');
+    
+    setCustomers(data || []);
+  };
+
   useEffect(() => {
     fetchDeposits();
     fetchPaymentMethods();
+    fetchCustomers();
   }, [selectedCompany]);
 
   const generateDepositNumber = async () => {
@@ -108,7 +133,26 @@ const Deposits = () => {
     return `DP-${today}-${String((count || 0) + 1).padStart(4, '0')}`;
   };
 
+  const generateFolioNumber = async () => {
+    const today = format(new Date(), 'yyyyMMdd');
+    const { count } = await supabase
+      .from('pos_deposits')
+      .select('*', { count: 'exact', head: true })
+      .eq('company_id', selectedCompany?.id);
+    return `FOLIO-${today}-${String((count || 0) + 1).padStart(4, '0')}`;
+  };
+
+  const handleCustomerSelect = (customerId: string) => {
+    setSelectedCustomerId(customerId);
+    const customer = customers.find(c => c.id === customerId);
+    if (customer) {
+      setCustomerName(customer.name);
+      setCustomerPhone(customer.phone || '');
+    }
+  };
+
   const resetForm = () => {
+    setSelectedCustomerId('');
     setCompanyName('');
     setCustomerName('');
     setCustomerPhone('');
@@ -140,6 +184,7 @@ const Deposits = () => {
     setIsSubmitting(true);
     try {
       const depositNumber = await generateDepositNumber();
+      const folioNumber = await generateFolioNumber();
       const selectedMethod = paymentMethods.find(m => m.id === paymentMethodId);
       
       // Create deposit record
@@ -148,9 +193,11 @@ const Deposits = () => {
         .insert({
           company_id: selectedCompany.id,
           deposit_number: depositNumber,
+          folio_number: folioNumber,
           company_name: companyName.trim() || null,
           customer_name: customerName.trim(),
           customer_phone: customerPhone.trim() || null,
+          customer_id: selectedCustomerId || null,
           event_name: eventName.trim(),
           event_date: eventDate,
           deposit_amount: dpAmount,
@@ -246,9 +293,9 @@ const Deposits = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Menunggu</Badge>;
+        return <Badge variant="outline">Menunggu</Badge>;
       case 'completed':
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Selesai</Badge>;
+        return <Badge variant="default">Selesai</Badge>;
       case 'cancelled':
         return <Badge variant="destructive">Dibatalkan</Badge>;
       default:
@@ -285,7 +332,7 @@ const Deposits = () => {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Deposit Pending</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-yellow-600">{formatCurrency(totalPending)}</p>
+            <p className="text-2xl font-bold text-warning">{formatCurrency(totalPending)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -301,7 +348,7 @@ const Deposits = () => {
             <CardTitle className="text-sm font-medium text-muted-foreground">Selesai Bulan Ini</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-green-600">{totalCompleted}</p>
+            <p className="text-2xl font-bold text-primary">{totalCompleted}</p>
           </CardContent>
         </Card>
       </div>
@@ -387,7 +434,7 @@ const Deposits = () => {
           <DialogHeader>
             <DialogTitle>Buat Deposit Baru</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-2">
             <div className="space-y-2">
               <Label>Nama Perusahaan</Label>
               <Input
@@ -396,6 +443,17 @@ const Deposits = () => {
                 placeholder="Nama perusahaan / instansi (opsional)"
               />
             </div>
+            
+            <div className="space-y-2">
+              <Label>Pilih dari Database Pelanggan</Label>
+              <SearchableSelect
+                options={customers.map(c => ({ value: c.id, label: `${c.name} (${c.code})` }))}
+                value={selectedCustomerId}
+                onChange={handleCustomerSelect}
+                placeholder="Cari pelanggan..."
+              />
+            </div>
+            
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Nama Pelanggan *</Label>

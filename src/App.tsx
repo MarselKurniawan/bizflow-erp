@@ -56,6 +56,7 @@ import ReceiptSettings from "./pages/pos/ReceiptSettings";
 import TaxSettings from "./pages/pos/TaxSettings";
 import OpenTables from "./pages/pos/OpenTables";
 import Deposits from "./pages/pos/Deposits";
+import Promotions from "./pages/pos/Promotions";
 import FixedAssets from "./pages/assets/FixedAssets";
 import NotFound from "./pages/NotFound";
 
@@ -105,6 +106,7 @@ const App = () => (
                 <Route path="/pos/transactions" element={<POSTransactions />} />
                 <Route path="/pos/open-tables" element={<OpenTables />} />
                 <Route path="/pos/deposits" element={<Deposits />} />
+                <Route path="/pos/promotions" element={<Promotions />} />
                 <Route path="/pos/settings" element={<POSSettings />} />
                 <Route path="/pos/cash-closing" element={<POSCashClosing />} />
                 <Route path="/pos/reports" element={<POSReports />} />
