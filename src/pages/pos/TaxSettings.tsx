@@ -45,7 +45,8 @@ const TaxSettings = () => {
     display_name: '',
     show_on_receipt: true,
     calculation_method: 'add_to_subtotal',
-    apply_order: 1
+    apply_order: 1,
+    category: 'tax' as 'tax' | 'service'
   });
 
   const fetchTaxRates = async () => {
