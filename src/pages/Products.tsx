@@ -368,6 +368,12 @@ export const Products: React.FC = () => {
         </div>
         
         <div className="flex gap-2">
+          {/* Import CSV Button */}
+          <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}>
+            <Upload className="w-4 h-4 mr-2" />
+            Import CSV
+          </Button>
+          
           {/* Category Management Button */}
           <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
             <DialogTrigger asChild>
