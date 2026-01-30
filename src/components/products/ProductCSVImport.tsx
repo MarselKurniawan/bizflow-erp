@@ -363,7 +363,6 @@ export const ProductCSVImport: React.FC<ProductCSVImportProps> = ({
                       <TableCell className="text-right">
                         {new Intl.NumberFormat('id-ID').format(product.unit_price)}
                       </TableCell>
-                      <TableCell>{product.unit}</TableCell>
                       <TableCell>
                         {product.isValid ? (
                           <CheckCircle2 className="h-4 w-4 text-primary" />
