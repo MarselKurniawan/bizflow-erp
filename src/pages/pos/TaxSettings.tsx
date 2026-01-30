@@ -109,7 +109,8 @@ const TaxSettings = () => {
         display_name: tax.display_name || '',
         show_on_receipt: tax.show_on_receipt,
         calculation_method: tax.calculation_method || 'add_to_subtotal',
-        apply_order: tax.apply_order || 1
+        apply_order: tax.apply_order || 1,
+        category: tax.category || 'tax'
       });
     } else {
       setEditingTax(null);
@@ -122,7 +123,8 @@ const TaxSettings = () => {
         display_name: '',
         show_on_receipt: true,
         calculation_method: 'add_to_subtotal',
-        apply_order: 1
+        apply_order: 1,
+        category: 'tax'
       });
     }
     setShowDialog(true);
