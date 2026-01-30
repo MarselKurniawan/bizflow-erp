@@ -218,8 +218,8 @@ const Promotions = () => {
     const minutes = differenceInMinutes(end, now) % 60;
     
     if (days > 0) return { text: `${days} hari ${hours} jam`, color: 'text-primary' };
-    if (hours > 0) return { text: `${hours} jam ${minutes} menit`, color: 'text-yellow-600' };
-    return { text: `${minutes} menit`, color: 'text-orange-600' };
+    if (hours > 0) return { text: `${hours} jam ${minutes} menit`, color: 'text-warning' };
+    return { text: `${minutes} menit`, color: 'text-destructive' };
   };
 
   const getPromoStatus = (promo: Promotion) => {
