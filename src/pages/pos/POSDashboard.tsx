@@ -12,11 +12,26 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Minus, Plus, ShoppingCart, Trash2, Receipt, Search, Maximize, Minimize, Pause, Play, Printer, User, ChefHat } from 'lucide-react';
+import { SearchableSelect } from '@/components/ui/searchable-select';
+import { Minus, Plus, ShoppingCart, Trash2, Receipt, Search, Maximize, Minimize, Pause, Play, Printer, User, ChefHat, Tag, X, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/formatters';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
+
+interface Customer {
+  id: string;
+  name: string;
+  phone: string | null;
+}
+
+interface AppliedPromo {
+  id: string;
+  name: string;
+  discount_type: string;
+  discount_value: number;
+  max_discount: number | null;
+}
 
 interface CartItem {
   product_id: string;
@@ -113,6 +128,13 @@ const POSDashboard = () => {
   // Customer info
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+  
+  // Promo code
+  const [promoCode, setPromoCode] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null);
+  const [promoDiscount, setPromoDiscount] = useState(0);
   
   // Tax
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
@@ -137,7 +159,7 @@ const POSDashboard = () => {
   
   const receiptRef = useRef<HTMLDivElement>(null);
 
-  // Fetch payment methods and receipt settings
+  // Fetch payment methods, customers, and receipt settings
   useEffect(() => {
     const fetchPaymentMethods = async () => {
       if (!selectedCompany) return;
@@ -197,12 +219,129 @@ const POSDashboard = () => {
       
       setTaxRates(data || []);
     };
+
+    const fetchCustomers = async () => {
+      if (!selectedCompany) return;
+      const { data } = await supabase
+        .from('customers')
+        .select('id, name, phone')
+        .eq('company_id', selectedCompany.id)
+        .order('name');
+      
+      setCustomers(data || []);
+    };
     
     fetchPaymentMethods();
     fetchCurrentSession();
     fetchReceiptSettings();
     fetchTaxRates();
+    fetchCustomers();
   }, [selectedCompany]);
+
+  // Handle customer selection
+  const handleCustomerSelect = (customerId: string) => {
+    setSelectedCustomerId(customerId);
+    if (customerId) {
+      const customer = customers.find(c => c.id === customerId);
+      if (customer) {
+        setCustomerName(customer.name);
+        setCustomerPhone(customer.phone || '');
+      }
+    } else {
+      setCustomerName('');
+      setCustomerPhone('');
+    }
+  };
+
+  // Apply promo code
+  const applyPromoCode = async () => {
+    if (!promoCode.trim() || !selectedCompany) return;
+    
+    const now = new Date().toISOString();
+    const { data: promo, error } = await supabase
+      .from('pos_promotions')
+      .select('*')
+      .eq('company_id', selectedCompany.id)
+      .eq('promo_code', promoCode.trim().toUpperCase())
+      .eq('is_active', true)
+      .lte('start_date', now)
+      .gte('end_date', now)
+      .maybeSingle();
+    
+    if (error || !promo) {
+      toast.error('Kode promo tidak valid atau sudah kadaluarsa');
+      return;
+    }
+    
+    // Check usage limit
+    if (promo.usage_limit && promo.used_count >= promo.usage_limit) {
+      toast.error('Kode promo sudah mencapai batas penggunaan');
+      return;
+    }
+    
+    // Check minimum purchase
+    const currentSubtotal = cart.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+    if (promo.min_purchase && currentSubtotal < promo.min_purchase) {
+      toast.error(`Minimum pembelian ${formatCurrency(promo.min_purchase)} untuk menggunakan promo ini`);
+      return;
+    }
+    
+    setAppliedPromo({
+      id: promo.id,
+      name: promo.name,
+      discount_type: promo.discount_type,
+      discount_value: promo.discount_value,
+      max_discount: promo.max_discount
+    });
+    
+    // Calculate discount
+    let discount = 0;
+    if (promo.discount_type === 'percentage') {
+      discount = currentSubtotal * (promo.discount_value / 100);
+      if (promo.max_discount && discount > promo.max_discount) {
+        discount = promo.max_discount;
+      }
+    } else {
+      discount = promo.discount_value;
+    }
+    
+    setPromoDiscount(discount);
+    toast.success(`Promo "${promo.name}" berhasil diterapkan!`);
+  };
+
+  // Remove applied promo
+  const removePromo = () => {
+    setAppliedPromo(null);
+    setPromoDiscount(0);
+    setPromoCode('');
+  };
+
+  // Recalculate promo discount when cart changes
+  useEffect(() => {
+    if (appliedPromo && cart.length > 0) {
+      const currentSubtotal = cart.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+      
+      // Check if still meets minimum purchase
+      if (appliedPromo.max_discount === null) {
+        // Check min_purchase from the stored promo
+        // For simplicity, just recalculate the discount
+      }
+      
+      let discount = 0;
+      if (appliedPromo.discount_type === 'percentage') {
+        discount = currentSubtotal * (appliedPromo.discount_value / 100);
+        if (appliedPromo.max_discount && discount > appliedPromo.max_discount) {
+          discount = appliedPromo.max_discount;
+        }
+      } else {
+        discount = appliedPromo.discount_value;
+      }
+      
+      setPromoDiscount(discount);
+    } else if (cart.length === 0 && appliedPromo) {
+      removePromo();
+    }
+  }, [cart, appliedPromo]);
 
   // Calculate total tax rate from selected taxes
   const getTotalTaxRate = () => {
@@ -301,9 +440,10 @@ const POSDashboard = () => {
   const roundDecimals = (amount: number) => Math.floor(amount);
 
   const subtotal = cart.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-  const totalDiscount = cart.reduce((sum, item) => sum + item.discount_amount, 0);
+  const totalItemDiscount = cart.reduce((sum, item) => sum + item.discount_amount, 0);
+  const totalDiscount = totalItemDiscount + promoDiscount;
   const totalTax = cart.reduce((sum, item) => sum + item.tax_amount, 0);
-  const grandTotalBeforeRounding = cart.reduce((sum, item) => sum + item.total, 0);
+  const grandTotalBeforeRounding = cart.reduce((sum, item) => sum + item.total, 0) - promoDiscount;
   const roundingAmount = grandTotalBeforeRounding - roundDecimals(grandTotalBeforeRounding);
   const grandTotal = roundDecimals(grandTotalBeforeRounding);
   const totalCogs = cart.reduce((sum, item) => sum + (item.cost_price * item.quantity), 0);
@@ -619,13 +759,23 @@ const POSDashboard = () => {
         await supabase.from('journal_entry_lines').insert(journalLines);
       }
 
+      // Update promo usage count if applied
+      if (appliedPromo) {
+        await supabase
+          .from('pos_promotions')
+          .update({ used_count: (await supabase.from('pos_promotions').select('used_count').eq('id', appliedPromo.id).single()).data?.used_count + 1 })
+          .eq('id', appliedPromo.id);
+      }
+
       setLastTransaction({
         ...transaction,
         items: cart,
         payments,
         customer_name: displayCustomerName,
         selectedTaxDisplay: getSelectedTaxDisplay(),
-        roundingAmount: roundingAmount
+        roundingAmount: roundingAmount,
+        promoName: appliedPromo?.name || null,
+        promoDiscount: promoDiscount
       });
 
       toast.success(`Transaksi ${transactionNumber} berhasil`);
@@ -633,6 +783,10 @@ const POSDashboard = () => {
       setPayments([]);
       setCustomerName('');
       setCustomerPhone('');
+      setSelectedCustomerId('');
+      setAppliedPromo(null);
+      setPromoDiscount(0);
+      setPromoCode('');
       setShowPaymentDialog(false);
       setShowReceiptDialog(true);
     } catch (error: any) {
@@ -885,7 +1039,7 @@ const POSDashboard = () => {
             <div className="flex items-center gap-4">
               <h1 className="text-2xl font-bold">Point of Sale</h1>
               {currentSession && (
-                <Badge variant="outline" className="text-green-600 border-green-600">
+                <Badge variant="default" className="bg-primary/10 text-primary border-primary/20">
                   Sesi Aktif: {formatCurrency(currentSession.opening_balance)} (Saldo Awal)
                 </Badge>
               )}
@@ -1020,10 +1174,19 @@ const POSDashboard = () => {
                   <span>Subtotal</span>
                   <span>{formatCurrency(subtotal)}</span>
                 </div>
-                {totalDiscount > 0 && (
-                  <div className="flex justify-between text-sm text-red-600">
-                    <span>Diskon</span>
-                    <span>-{formatCurrency(totalDiscount)}</span>
+                {totalItemDiscount > 0 && (
+                  <div className="flex justify-between text-sm text-destructive">
+                    <span>Diskon Item</span>
+                    <span>-{formatCurrency(totalItemDiscount)}</span>
+                  </div>
+                )}
+                {promoDiscount > 0 && appliedPromo && (
+                  <div className="flex justify-between text-sm text-primary">
+                    <span className="flex items-center gap-1">
+                      <Tag className="h-3 w-3" />
+                      {appliedPromo.name}
+                    </span>
+                    <span>-{formatCurrency(promoDiscount)}</span>
                   </div>
                 )}
                 {totalTax > 0 && (
@@ -1074,7 +1237,7 @@ const POSDashboard = () => {
         </div>
         <div className="flex items-center gap-2">
           {currentSession ? (
-            <Badge variant="outline" className="text-green-600 border-green-600">
+            <Badge variant="default" className="bg-primary/10 text-primary border-primary/20">
               Sesi Aktif
             </Badge>
           ) : (
@@ -1136,23 +1299,65 @@ const POSDashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Customer Info */}
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  placeholder="Nama pelanggan"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
+              {/* Customer Lookup */}
+              <div className="space-y-2">
+                <Label className="text-sm text-muted-foreground">Pelanggan</Label>
+                <SearchableSelect
+                  options={customers.map(c => ({ value: c.id, label: `${c.name}${c.phone ? ` - ${c.phone}` : ''}` }))}
+                  value={selectedCustomerId}
+                  onChange={handleCustomerSelect}
+                  placeholder="Cari atau pilih pelanggan..."
+                  searchPlaceholder="Cari pelanggan..."
+                  emptyMessage="Tidak ada pelanggan"
                 />
-                <Input
-                  placeholder="No. HP"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                />
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    placeholder="Nama pelanggan"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                  />
+                  <Input
+                    placeholder="No. HP"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Promo Code */}
+              <div className="space-y-2">
+                <Label className="text-sm text-muted-foreground">Kode Promo</Label>
+                {appliedPromo ? (
+                  <div className="flex items-center justify-between p-2 bg-primary/10 rounded-lg border border-primary/20">
+                    <div className="flex items-center gap-2">
+                      <Tag className="h-4 w-4 text-primary" />
+                      <span className="font-medium text-sm">{appliedPromo.name}</span>
+                      <Badge variant="secondary" className="text-xs">
+                        -{appliedPromo.discount_type === 'percentage' ? `${appliedPromo.discount_value}%` : formatCurrency(appliedPromo.discount_value)}
+                      </Badge>
+                    </div>
+                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={removePromo}>
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Masukkan kode promo"
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                      className="flex-1"
+                    />
+                    <Button variant="outline" onClick={applyPromoCode} disabled={!promoCode.trim()}>
+                      Terapkan
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Tax Selection */}
               <div className="space-y-1">
-                <Label className="text-sm text-muted-foreground">Pajak (opsional)</Label>
+                <Label className="text-sm text-muted-foreground">Pajak & Service (opsional)</Label>
                 <div className="flex flex-wrap gap-2">
                   {taxRates.length === 0 ? (
                     <span className="text-sm text-muted-foreground">Belum ada pajak dikonfigurasi</span>
@@ -1217,10 +1422,19 @@ const POSDashboard = () => {
                       <span>Subtotal</span>
                       <span>{formatCurrency(subtotal)}</span>
                     </div>
-                    {totalDiscount > 0 && (
-                      <div className="flex justify-between text-sm text-red-600">
-                        <span>Diskon</span>
-                        <span>-{formatCurrency(totalDiscount)}</span>
+                    {totalItemDiscount > 0 && (
+                      <div className="flex justify-between text-sm text-destructive">
+                        <span>Diskon Item</span>
+                        <span>-{formatCurrency(totalItemDiscount)}</span>
+                      </div>
+                    )}
+                    {promoDiscount > 0 && appliedPromo && (
+                      <div className="flex justify-between text-sm text-primary">
+                        <span className="flex items-center gap-1">
+                          <Tag className="h-3 w-3" />
+                          {appliedPromo.name}
+                        </span>
+                        <span>-{formatCurrency(promoDiscount)}</span>
                       </div>
                     )}
                     {totalTax > 0 && (
@@ -1345,12 +1559,12 @@ const POSDashboard = () => {
                 </div>
                 <div className="flex justify-between text-lg font-bold">
                   <span>Kembalian</span>
-                  <span className={changeAmount >= 0 ? 'text-green-600' : 'text-red-600'}>
+                  <span className={changeAmount >= 0 ? 'text-primary' : 'text-destructive'}>
                     {formatCurrency(Math.max(0, changeAmount))}
                   </span>
                 </div>
                 {changeAmount < 0 && (
-                  <p className="text-sm text-red-600">Kurang: {formatCurrency(Math.abs(changeAmount))}</p>
+                  <p className="text-sm text-destructive">Kurang: {formatCurrency(Math.abs(changeAmount))}</p>
                 )}
               </div>
             </div>
@@ -1392,36 +1606,66 @@ const POSDashboard = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Receipt Dialog */}
+        {/* Receipt Dialog - Improved Responsiveness */}
         <Dialog open={showReceiptDialog} onOpenChange={setShowReceiptDialog}>
-          <DialogContent>
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Transaksi Berhasil</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Receipt className="h-5 w-5 text-primary" />
+                Transaksi Berhasil
+              </DialogTitle>
             </DialogHeader>
             {lastTransaction && (
               <div className="space-y-4">
-                <div className="text-center py-4 bg-green-50 rounded-lg">
-                  <p className="text-green-600 font-medium">{lastTransaction.transaction_number}</p>
-                  <p className="text-2xl font-bold">{formatCurrency(lastTransaction.total_amount)}</p>
+                <div className="text-center py-6 bg-primary/5 rounded-lg border border-primary/10">
+                  <p className="text-primary font-medium text-lg">{lastTransaction.transaction_number}</p>
+                  <p className="text-3xl font-bold mt-1">{formatCurrency(lastTransaction.total_amount)}</p>
                   {lastTransaction.change_amount > 0 && (
-                    <p className="text-sm text-muted-foreground">Kembalian: {formatCurrency(lastTransaction.change_amount)}</p>
+                    <p className="text-muted-foreground mt-2">Kembalian: <span className="font-semibold">{formatCurrency(lastTransaction.change_amount)}</span></p>
                   )}
+                  {lastTransaction.promoName && (
+                    <div className="flex items-center justify-center gap-1 mt-2">
+                      <Tag className="h-3 w-3 text-primary" />
+                      <span className="text-sm text-primary">{lastTransaction.promoName} (-{formatCurrency(lastTransaction.promoDiscount)})</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="text-center text-sm text-muted-foreground">
+                  <p>Anda dapat mencetak ulang nota kapan saja</p>
+                </div>
+
+                {/* Print Buttons Grid */}
+                <div className="grid grid-cols-2 gap-3">
+                  <Button variant="outline" className="h-12" onClick={() => printReceipt('kitchen')}>
+                    <ChefHat className="h-4 w-4 mr-2" />
+                    Cetak Dapur
+                  </Button>
+                  <Button variant="outline" className="h-12" onClick={() => printReceipt('customer')}>
+                    <Receipt className="h-4 w-4 mr-2" />
+                    Cetak Nota
+                  </Button>
+                </div>
+                
+                <Button className="w-full h-12" onClick={printAllReceipts}>
+                  <Printer className="h-4 w-4 mr-2" />
+                  Cetak Semua
+                </Button>
+
+                <div className="flex items-center justify-center gap-2 pt-2 border-t">
+                  <Button variant="ghost" size="sm" onClick={() => {
+                    printReceipt('customer');
+                    toast.success('Mencetak ulang nota...');
+                  }}>
+                    <RotateCcw className="h-3 w-3 mr-1" />
+                    Cetak Ulang
+                  </Button>
                 </div>
               </div>
             )}
-            <DialogFooter className="flex-col sm:flex-row gap-2">
-              <Button variant="outline" onClick={() => setShowReceiptDialog(false)}>Tutup</Button>
-              <Button variant="outline" onClick={() => printReceipt('kitchen')}>
-                <ChefHat className="h-4 w-4 mr-2" />
-                Cetak Dapur
-              </Button>
-              <Button variant="outline" onClick={() => printReceipt('customer')}>
-                <Receipt className="h-4 w-4 mr-2" />
-                Cetak Nota
-              </Button>
-              <Button onClick={printAllReceipts}>
-                <Printer className="h-4 w-4 mr-2" />
-                Cetak Semua
+            <DialogFooter>
+              <Button variant="outline" className="w-full" onClick={() => setShowReceiptDialog(false)}>
+                Tutup & Transaksi Baru
               </Button>
             </DialogFooter>
           </DialogContent>
