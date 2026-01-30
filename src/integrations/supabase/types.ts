@@ -1078,6 +1078,7 @@ export type Database = {
         Row: {
           cash_account_id: string | null
           company_id: string
+          company_name: string | null
           created_at: string
           created_by: string | null
           customer_name: string
@@ -1098,6 +1099,7 @@ export type Database = {
         Insert: {
           cash_account_id?: string | null
           company_id: string
+          company_name?: string | null
           created_at?: string
           created_by?: string | null
           customer_name: string
@@ -1118,6 +1120,7 @@ export type Database = {
         Update: {
           cash_account_id?: string | null
           company_id?: string
+          company_name?: string | null
           created_at?: string
           created_by?: string | null
           customer_name?: string

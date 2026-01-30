@@ -54,6 +54,7 @@ const Deposits = () => {
   const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
   
   // Form state
+  const [companyName, setCompanyName] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [eventName, setEventName] = useState('');

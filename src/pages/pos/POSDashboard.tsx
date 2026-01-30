@@ -297,15 +297,15 @@ const POSDashboard = () => {
     setCart(cart.filter(item => item.product_id !== productId));
   };
 
-  // Round down to nearest 100
-  const roundToHundred = (amount: number) => Math.floor(amount / 100) * 100;
+  // Round down decimals only (not to nearest 100)
+  const roundDecimals = (amount: number) => Math.floor(amount);
 
   const subtotal = cart.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
   const totalDiscount = cart.reduce((sum, item) => sum + item.discount_amount, 0);
   const totalTax = cart.reduce((sum, item) => sum + item.tax_amount, 0);
   const grandTotalBeforeRounding = cart.reduce((sum, item) => sum + item.total, 0);
-  const roundingAmount = grandTotalBeforeRounding - roundToHundred(grandTotalBeforeRounding);
-  const grandTotal = roundToHundred(grandTotalBeforeRounding);
+  const roundingAmount = grandTotalBeforeRounding - roundDecimals(grandTotalBeforeRounding);
+  const grandTotal = roundDecimals(grandTotalBeforeRounding);
   const totalCogs = cart.reduce((sum, item) => sum + (item.cost_price * item.quantity), 0);
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
   const changeAmount = totalPaid - grandTotal;
