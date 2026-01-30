@@ -500,6 +500,10 @@ const Deposits = () => {
                   {getStatusBadge(selectedDeposit.status)}
                 </div>
                 <div>
+                  <p className="text-sm text-muted-foreground">Perusahaan</p>
+                  <p className="font-medium">{selectedDeposit.company_name || '-'}</p>
+                </div>
+                <div>
                   <p className="text-sm text-muted-foreground">Pelanggan</p>
                   <p className="font-medium">{selectedDeposit.customer_name}</p>
                   {selectedDeposit.customer_phone && (
