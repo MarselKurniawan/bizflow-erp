@@ -452,7 +452,6 @@ const Deposits = () => {
                 onChange={handleCustomerSelect}
                 placeholder="Cari pelanggan..."
               />
-              />
             </div>
             
             <div className="grid grid-cols-2 gap-4">
