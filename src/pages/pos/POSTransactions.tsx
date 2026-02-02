@@ -683,13 +683,22 @@ const POSTransactions = () => {
               </div>
             </div>
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setSelectedTransaction(null)}>Tutup</Button>
-            <Button variant="outline" onClick={() => selectedTransaction && printReceiptByType(selectedTransaction, 'kitchen')}>
+          <DialogFooter className="flex-col sm:flex-row gap-2 pt-4 border-t">
+            <Button variant="outline" onClick={() => setSelectedTransaction(null)} className="w-full sm:w-auto">
+              Tutup
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => selectedTransaction && printReceiptByType(selectedTransaction, 'kitchen')}
+              className="w-full sm:w-auto"
+            >
               <ChefHat className="h-4 w-4 mr-2" />
               Cetak Dapur
             </Button>
-            <Button onClick={() => selectedTransaction && printReceiptByType(selectedTransaction, 'customer')}>
+            <Button 
+              onClick={() => selectedTransaction && printReceiptByType(selectedTransaction, 'customer')}
+              className="w-full sm:w-auto"
+            >
               <Receipt className="h-4 w-4 mr-2" />
               Cetak Nota
             </Button>

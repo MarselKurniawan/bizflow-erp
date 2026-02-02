@@ -1026,9 +1026,32 @@ const POSDashboard = () => {
     }, 500);
   };
 
-  const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        // Enter true fullscreen mode
+        await document.documentElement.requestFullscreen();
+        setIsFullscreen(true);
+      } else {
+        // Exit fullscreen mode
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    } catch (err) {
+      // Fallback to just UI fullscreen if API not available
+      setIsFullscreen(!isFullscreen);
+    }
   };
+
+  // Listen for fullscreen changes (e.g., when user presses Escape)
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   if (isFullscreen) {
     return (
