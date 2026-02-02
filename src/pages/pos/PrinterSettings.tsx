@@ -460,6 +460,19 @@ const PrinterSettings = () => {
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex justify-center gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleTestPrint(printer.id)}
+                          disabled={testingPrinterId === printer.id || isPrinting}
+                          title="Test Print"
+                        >
+                          {testingPrinterId === printer.id ? (
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Play className="h-4 w-4 text-primary" />
+                          )}
+                        </Button>
                         <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(printer)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
