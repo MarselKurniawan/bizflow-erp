@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
+import { useThermalPrinter } from '@/hooks/useThermalPrinter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, Pencil, Trash2, Printer, ChefHat, Receipt, Usb, Bluetooth, Wifi, AlertCircle, CheckCircle2, RefreshCw, Link2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Printer, ChefHat, Receipt, Usb, Bluetooth, Wifi, AlertCircle, CheckCircle2, RefreshCw, Link2, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import NetworkPrinterForm from '@/components/pos/NetworkPrinterForm';
 
