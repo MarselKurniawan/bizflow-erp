@@ -214,12 +214,14 @@ export const Sidebar: React.FC = () => {
               return true;
             })
             .map((item) => {
-              // For cashier, filter POS children to only show Kasir and Riwayat Transaksi
+              // For cashier, filter POS children to only show Kasir, Riwayat Transaksi, and Pengaturan Printer
               if (isCashier && item.label === 'POS' && item.children) {
                 return {
                   ...item,
                   children: item.children.filter(child => 
-                    child.path === '/pos' || child.path === '/pos/transactions'
+                    child.path === '/pos' || 
+                    child.path === '/pos/transactions' || 
+                    child.path === '/pos/printer-settings'
                   )
                 };
               }
