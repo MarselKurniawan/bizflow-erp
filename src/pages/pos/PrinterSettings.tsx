@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
+import { useThermalPrinter } from '@/hooks/useThermalPrinter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, Pencil, Trash2, Printer, ChefHat, Receipt, Usb, Bluetooth, Wifi, AlertCircle, CheckCircle2, RefreshCw, Link2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Printer, ChefHat, Receipt, Usb, Bluetooth, Wifi, AlertCircle, CheckCircle2, RefreshCw, Link2, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import NetworkPrinterForm from '@/components/pos/NetworkPrinterForm';
 
@@ -68,6 +69,7 @@ const KNOWN_THERMAL_PRINTERS = [
 
 const PrinterSettings = () => {
   const { selectedCompany } = useCompany();
+  const { testPrint, isPrinting } = useThermalPrinter();
   const [printers, setPrinters] = useState<PrinterSetting[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
@@ -78,6 +80,7 @@ const PrinterSettings = () => {
   const [usbSupported, setUsbSupported] = useState(false);
   const [serialSupported, setSerialSupported] = useState(false);
   const [bluetoothSupported, setBluetoothSupported] = useState(false);
+  const [testingPrinterId, setTestingPrinterId] = useState<string | null>(null);
 
   useEffect(() => {
     // Check browser support
@@ -350,6 +353,12 @@ const PrinterSettings = () => {
     return roles.length > 0 ? roles.join(', ') : '-';
   };
 
+  const handleTestPrint = async (printerId: string) => {
+    setTestingPrinterId(printerId);
+    await testPrint(printerId);
+    setTestingPrinterId(null);
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -451,6 +460,19 @@ const PrinterSettings = () => {
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex justify-center gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleTestPrint(printer.id)}
+                          disabled={testingPrinterId === printer.id || isPrinting}
+                          title="Test Print"
+                        >
+                          {testingPrinterId === printer.id ? (
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Play className="h-4 w-4 text-primary" />
+                          )}
+                        </Button>
                         <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(printer)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
