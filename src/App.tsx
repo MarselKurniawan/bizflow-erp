@@ -57,6 +57,7 @@ import TaxSettings from "./pages/pos/TaxSettings";
 import OpenTables from "./pages/pos/OpenTables";
 import Deposits from "./pages/pos/Deposits";
 import Promotions from "./pages/pos/Promotions";
+import PrinterSettings from "./pages/pos/PrinterSettings";
 import FixedAssets from "./pages/assets/FixedAssets";
 import NotFound from "./pages/NotFound";
 
@@ -112,6 +113,7 @@ const App = () => (
                 <Route path="/pos/reports" element={<POSReports />} />
                 <Route path="/pos/receipt-settings" element={<ReceiptSettings />} />
                 <Route path="/pos/tax-settings" element={<TaxSettings />} />
+                <Route path="/pos/printer-settings" element={<PrinterSettings />} />
                 {/* Fixed Assets */}
                 <Route path="/assets" element={<FixedAssets />} />
                 {/* Journal & Reports */}

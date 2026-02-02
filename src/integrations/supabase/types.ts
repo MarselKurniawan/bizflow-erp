@@ -1731,6 +1731,74 @@ export type Database = {
           },
         ]
       }
+      printer_settings: {
+        Row: {
+          company_id: string
+          connection_type: string
+          created_at: string
+          device_name: string | null
+          id: string
+          ip_address: string | null
+          is_active: boolean | null
+          is_cashier_printer: boolean | null
+          is_kitchen_printer: boolean | null
+          last_connected_at: string | null
+          name: string
+          paper_width: string | null
+          port: number | null
+          printer_type: string
+          product_id: string | null
+          updated_at: string
+          vendor_id: string | null
+        }
+        Insert: {
+          company_id: string
+          connection_type?: string
+          created_at?: string
+          device_name?: string | null
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean | null
+          is_cashier_printer?: boolean | null
+          is_kitchen_printer?: boolean | null
+          last_connected_at?: string | null
+          name: string
+          paper_width?: string | null
+          port?: number | null
+          printer_type?: string
+          product_id?: string | null
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          connection_type?: string
+          created_at?: string
+          device_name?: string | null
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean | null
+          is_cashier_printer?: boolean | null
+          is_kitchen_printer?: boolean | null
+          last_connected_at?: string | null
+          name?: string
+          paper_width?: string | null
+          port?: number | null
+          printer_type?: string
+          product_id?: string | null
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "printer_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_categories: {
         Row: {
           company_id: string
@@ -2052,6 +2120,7 @@ export type Database = {
           logo_url: string | null
           name: string
           paper_size: string | null
+          printer_setting_id: string | null
           receipt_type: string
           show_company_address: boolean | null
           show_company_name: boolean | null
@@ -2072,6 +2141,7 @@ export type Database = {
           logo_url?: string | null
           name: string
           paper_size?: string | null
+          printer_setting_id?: string | null
           receipt_type?: string
           show_company_address?: boolean | null
           show_company_name?: boolean | null
@@ -2092,6 +2162,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           paper_size?: string | null
+          printer_setting_id?: string | null
           receipt_type?: string
           show_company_address?: boolean | null
           show_company_name?: boolean | null
@@ -2108,6 +2179,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_settings_printer_setting_id_fkey"
+            columns: ["printer_setting_id"]
+            isOneToOne: false
+            referencedRelation: "printer_settings"
             referencedColumns: ["id"]
           },
         ]
