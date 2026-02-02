@@ -57,6 +57,7 @@ import TaxSettings from "./pages/pos/TaxSettings";
 import OpenTables from "./pages/pos/OpenTables";
 import Deposits from "./pages/pos/Deposits";
 import Promotions from "./pages/pos/Promotions";
+import PrinterSettings from "./pages/pos/PrinterSettings";
 import FixedAssets from "./pages/assets/FixedAssets";
 import NotFound from "./pages/NotFound";
 
