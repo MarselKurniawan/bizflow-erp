@@ -62,6 +62,7 @@ const menuItems: MenuItem[] = [
       { label: 'Metode Pembayaran', path: '/pos/settings' },
       { label: 'Tax & Services', path: '/pos/tax-settings' },
       { label: 'Pengaturan Struk', path: '/pos/receipt-settings' },
+      { label: 'Pengaturan Printer', path: '/pos/printer-settings' },
     ]
   },
   { 

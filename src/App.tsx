@@ -113,6 +113,7 @@ const App = () => (
                 <Route path="/pos/reports" element={<POSReports />} />
                 <Route path="/pos/receipt-settings" element={<ReceiptSettings />} />
                 <Route path="/pos/tax-settings" element={<TaxSettings />} />
+                <Route path="/pos/printer-settings" element={<PrinterSettings />} />
                 {/* Fixed Assets */}
                 <Route path="/assets" element={<FixedAssets />} />
                 {/* Journal & Reports */}
