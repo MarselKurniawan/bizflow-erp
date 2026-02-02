@@ -115,6 +115,7 @@ const POSDashboard = () => {
   const { selectedCompany } = useCompany();
   const { user } = useAuth();
   const { products } = useProducts();
+  const { printCustomerReceipt, printKitchenOrder, printAll, isPrinting } = useThermalPrinter();
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
