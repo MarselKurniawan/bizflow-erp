@@ -425,12 +425,15 @@ class NetworkPrinter {
     // For now, we'll try a simple HTTP POST approach
     // This works if the printer has a web interface that accepts raw data
     try {
-      const response = await fetch(`http://${this.ipAddress}:${this.port}/`, {
+      // Convert Uint8Array to Blob for fetch compatibility
+      const blob = new Blob([data], { type: 'application/octet-stream' });
+      
+      await fetch(`http://${this.ipAddress}:${this.port}/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/octet-stream',
         },
-        body: data,
+        body: blob,
         mode: 'no-cors', // Required for cross-origin requests
       });
       
