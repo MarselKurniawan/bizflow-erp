@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Plus, Pencil, Trash2, Printer, ChefHat, Receipt, Usb, Bluetooth, Wifi, AlertCircle, CheckCircle2, RefreshCw, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
+import NetworkPrinterForm from '@/components/pos/NetworkPrinterForm';
 
 interface PrinterSetting {
   id: string;
