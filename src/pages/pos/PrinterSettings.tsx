@@ -69,6 +69,7 @@ const KNOWN_THERMAL_PRINTERS = [
 
 const PrinterSettings = () => {
   const { selectedCompany } = useCompany();
+  const { testPrint, isPrinting } = useThermalPrinter();
   const [printers, setPrinters] = useState<PrinterSetting[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
@@ -79,6 +80,7 @@ const PrinterSettings = () => {
   const [usbSupported, setUsbSupported] = useState(false);
   const [serialSupported, setSerialSupported] = useState(false);
   const [bluetoothSupported, setBluetoothSupported] = useState(false);
+  const [testingPrinterId, setTestingPrinterId] = useState<string | null>(null);
 
   useEffect(() => {
     // Check browser support
