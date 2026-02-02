@@ -354,11 +354,16 @@ class USBPrinter {
 
 // Serial Printer Class
 class SerialPrinter {
-  private port: SerialPort | null = null;
-  private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
+  private port: any = null;
+  private writer: any = null;
 
   async connect(): Promise<boolean> {
     try {
+      if (!navigator.serial) {
+        console.error('Web Serial not supported');
+        return false;
+      }
+      
       const ports = await navigator.serial.getPorts();
       this.port = ports[0] || null;
       
