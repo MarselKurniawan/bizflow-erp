@@ -102,14 +102,14 @@ const NetworkPrinterForm = ({
         );
       case 'success':
         return (
-          <Badge className="bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-500/20">
+          <Badge variant="outline" className="border-primary/30 text-primary bg-primary/10 hover:bg-primary/20">
             <CheckCircle2 className="h-3 w-3 mr-1" />
             Terhubung
           </Badge>
         );
       case 'failed':
         return (
-          <Badge variant="destructive" className="bg-destructive/10 text-destructive border-destructive/20">
+          <Badge variant="destructive">
             <XCircle className="h-3 w-3 mr-1" />
             Gagal
           </Badge>
