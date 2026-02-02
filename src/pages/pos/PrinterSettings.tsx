@@ -548,11 +548,11 @@ const PrinterSettings = () => {
                 </div>
                 
                 {connectedDevice && (
-                  <Alert className="border-green-200 bg-green-50">
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    <AlertDescription className="text-green-800">
+                  <Alert className="border-primary/30 bg-primary/5">
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                    <AlertDescription>
                       <strong>Terdeteksi:</strong> {connectedDevice.productName || 'Printer'}<br />
-                      <span className="text-xs">
+                      <span className="text-xs text-muted-foreground">
                         VID: {formData.vendor_id} | PID: {formData.product_id}
                       </span>
                     </AlertDescription>
