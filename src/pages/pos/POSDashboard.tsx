@@ -102,6 +102,7 @@ interface ReceiptSetting {
   show_payment_info: boolean;
   paper_size: string;
   is_active: boolean;
+  printer_setting_id: string | null;
 }
 
 interface SplitRule {
