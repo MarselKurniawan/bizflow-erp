@@ -570,12 +570,12 @@ const POSTransactions = () => {
 
       {/* Transaction Details Dialog */}
       <Dialog open={!!selectedTransaction} onOpenChange={() => setSelectedTransaction(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Detail Transaksi {selectedTransaction?.transaction_number}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-muted-foreground">No. Invoice:</span>
                 <p className="font-medium font-mono">{selectedTransaction?.invoice_number || '-'}</p>
@@ -683,13 +683,22 @@ const POSTransactions = () => {
               </div>
             </div>
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setSelectedTransaction(null)}>Tutup</Button>
-            <Button variant="outline" onClick={() => selectedTransaction && printReceiptByType(selectedTransaction, 'kitchen')}>
+          <DialogFooter className="flex-col sm:flex-row gap-2 pt-4 border-t">
+            <Button variant="outline" onClick={() => setSelectedTransaction(null)} className="w-full sm:w-auto">
+              Tutup
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => selectedTransaction && printReceiptByType(selectedTransaction, 'kitchen')}
+              className="w-full sm:w-auto"
+            >
               <ChefHat className="h-4 w-4 mr-2" />
               Cetak Dapur
             </Button>
-            <Button onClick={() => selectedTransaction && printReceiptByType(selectedTransaction, 'customer')}>
+            <Button 
+              onClick={() => selectedTransaction && printReceiptByType(selectedTransaction, 'customer')}
+              className="w-full sm:w-auto"
+            >
               <Receipt className="h-4 w-4 mr-2" />
               Cetak Nota
             </Button>
