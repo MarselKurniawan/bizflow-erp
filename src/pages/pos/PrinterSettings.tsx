@@ -353,6 +353,12 @@ const PrinterSettings = () => {
     return roles.length > 0 ? roles.join(', ') : '-';
   };
 
+  const handleTestPrint = async (printerId: string) => {
+    setTestingPrinterId(printerId);
+    await testPrint(printerId);
+    setTestingPrinterId(null);
+  };
+
   return (
     <div className="space-y-6">
       <div>
