@@ -570,12 +570,12 @@ const POSTransactions = () => {
 
       {/* Transaction Details Dialog */}
       <Dialog open={!!selectedTransaction} onOpenChange={() => setSelectedTransaction(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Detail Transaksi {selectedTransaction?.transaction_number}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-muted-foreground">No. Invoice:</span>
                 <p className="font-medium font-mono">{selectedTransaction?.invoice_number || '-'}</p>
