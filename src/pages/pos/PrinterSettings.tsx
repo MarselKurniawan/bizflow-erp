@@ -602,25 +602,12 @@ const PrinterSettings = () => {
 
             {/* Network Connection */}
             {formData.printer_type === 'network' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>IP Address</Label>
-                  <Input
-                    value={formData.ip_address || ''}
-                    onChange={(e) => setFormData({ ...formData, ip_address: e.target.value })}
-                    placeholder="192.168.1.100"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Port</Label>
-                  <Input
-                    type="number"
-                    value={formData.port || 9100}
-                    onChange={(e) => setFormData({ ...formData, port: parseInt(e.target.value) })}
-                    placeholder="9100"
-                  />
-                </div>
-              </div>
+              <NetworkPrinterForm
+                ipAddress={formData.ip_address || ''}
+                port={formData.port || 9100}
+                onIpChange={(ip) => setFormData({ ...formData, ip_address: ip })}
+                onPortChange={(port) => setFormData({ ...formData, port })}
+              />
             )}
 
             <div className="space-y-2">

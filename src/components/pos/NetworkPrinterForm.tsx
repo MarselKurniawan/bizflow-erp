@@ -189,9 +189,9 @@ const NetworkPrinterForm = ({
 
         {/* Success message */}
         {connectionStatus === 'success' && (
-          <Alert className="py-2 border-green-500/30 bg-green-500/5">
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-sm text-green-600">
+          <Alert className="py-2 border-primary/30 bg-primary/5">
+            <CheckCircle2 className="h-4 w-4 text-primary" />
+            <AlertDescription className="text-sm text-primary">
               Printer dapat dijangkau di jaringan! Pastikan printer dalam kondisi menyala.
             </AlertDescription>
           </Alert>
