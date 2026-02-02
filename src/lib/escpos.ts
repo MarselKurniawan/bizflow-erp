@@ -279,13 +279,31 @@ export interface PrinterConfig {
   paperWidth: '58mm' | '80mm';
 }
 
+// Type declarations for Web APIs
+declare global {
+  interface Navigator {
+    usb?: {
+      getDevices(): Promise<any[]>;
+      requestDevice(options: { filters: Array<{ vendorId?: number; productId?: number }> }): Promise<any>;
+    };
+    serial?: {
+      getPorts(): Promise<any[]>;
+      requestPort(): Promise<any>;
+    };
+  }
+}
+
 // USB Printer Class
 class USBPrinter {
-  private device: USBDevice | null = null;
+  private device: any = null;
   private endpoint: number = 0;
 
   async connect(vendorId: number, productId: number): Promise<boolean> {
     try {
+      if (!navigator.usb) {
+        console.error('Web USB not supported');
+        return false;
+      }
       const devices = await navigator.usb.getDevices();
       this.device = devices.find(d => d.vendorId === vendorId && d.productId === productId) || null;
       
