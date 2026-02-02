@@ -903,26 +903,54 @@ const POSDashboard = () => {
     return allItems.filter(item => categoryIds.includes(item.category_id || ''));
   };
 
-  const printReceipt = (receiptType?: string) => {
+  // Silent print helper - builds transaction data for thermal printer
+  const buildTransactionDataForPrint = useCallback(() => {
+    if (!lastTransaction) return null;
+    
+    return {
+      transaction_number: lastTransaction.transaction_number,
+      customer_name: lastTransaction.customer_name,
+      customer_phone: lastTransaction.customer_phone,
+      items: lastTransaction.items.map((item: CartItem) => ({
+        id: item.product_id,
+        name: item.name,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        cost_price: item.cost_price,
+        discount_percent: item.discount_percent,
+        tax_percent: item.tax_percent,
+        tax_amount: item.tax_amount,
+        discount_amount: item.discount_amount,
+        total: item.total,
+        category_id: item.category_id,
+      })),
+      payments: lastTransaction.payments,
+      subtotal: subtotal,
+      totalDiscount: totalDiscount,
+      totalTax: totalTax,
+      taxDisplay: lastTransaction.selectedTaxDisplay,
+      roundingAmount: lastTransaction.roundingAmount,
+      grandTotal: grandTotal,
+      changeAmount: changeAmount > 0 ? changeAmount : 0,
+    };
+  }, [lastTransaction, subtotal, totalDiscount, totalTax, grandTotal, changeAmount]);
+
+  // Fallback browser print for when no thermal printer is configured
+  const browserPrintReceipt = (receiptType?: string) => {
     if (!lastTransaction) return;
 
-    // Get active settings for the specified type or all active
     let settingsToPrint = receiptSettings;
     if (receiptType) {
       settingsToPrint = receiptSettings.filter(s => s.receipt_type === receiptType);
     }
 
     if (settingsToPrint.length === 0) {
-      // Fallback to default print if no settings configured
-      printDefaultReceipt();
+      browserPrintDefaultReceipt();
       return;
     }
 
-    // Print each receipt
     settingsToPrint.forEach(setting => {
       const items = getItemsForReceipt(setting, lastTransaction.items);
-      
-      // Skip if no items for this receipt
       if (items.length === 0) return;
       
       const printWindow = window.open('', '_blank');
@@ -939,7 +967,7 @@ const POSDashboard = () => {
     });
   };
 
-  const printDefaultReceipt = () => {
+  const browserPrintDefaultReceipt = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow || !lastTransaction) return;
 
@@ -1018,14 +1046,53 @@ const POSDashboard = () => {
     }, 250);
   };
 
-  const printAllReceipts = () => {
-    // Print customer receipt
-    printReceipt('customer');
+  // Main print function - tries silent print first, falls back to browser
+  const printReceipt = async (receiptType?: string) => {
+    if (!lastTransaction) return;
     
-    // Print kitchen order after a short delay
-    setTimeout(() => {
-      printReceipt('kitchen');
-    }, 500);
+    const transactionData = buildTransactionDataForPrint();
+    if (!transactionData) return;
+
+    // Try silent printing based on receipt type
+    if (receiptType === 'kitchen') {
+      const success = await printKitchenOrder(transactionData);
+      if (!success) {
+        // Fallback to browser print
+        browserPrintReceipt('kitchen');
+      }
+    } else if (receiptType === 'customer') {
+      // Find matching receipt setting for customer
+      const customerSetting = receiptSettings.find(s => s.receipt_type === 'customer');
+      const success = await printCustomerReceipt(transactionData, customerSetting);
+      if (!success) {
+        browserPrintReceipt('customer');
+      }
+    } else {
+      // Print all types
+      const customerSetting = receiptSettings.find(s => s.receipt_type === 'customer');
+      const customerSuccess = await printCustomerReceipt(transactionData, customerSetting);
+      const kitchenSuccess = await printKitchenOrder(transactionData);
+      
+      // Fallback for any that failed
+      if (!customerSuccess) browserPrintReceipt('customer');
+      if (!kitchenSuccess) browserPrintReceipt('kitchen');
+    }
+  };
+
+  const printAllReceipts = async () => {
+    if (!lastTransaction) return;
+    
+    const transactionData = buildTransactionDataForPrint();
+    if (!transactionData) return;
+
+    const customerSetting = receiptSettings.find(s => s.receipt_type === 'customer');
+    const { customer, kitchen } = await printAll(transactionData, customerSetting);
+    
+    // Fallback to browser for any that failed
+    if (!customer) browserPrintReceipt('customer');
+    if (!kitchen) {
+      setTimeout(() => browserPrintReceipt('kitchen'), 300);
+    }
   };
 
   const toggleFullscreen = async () => {
