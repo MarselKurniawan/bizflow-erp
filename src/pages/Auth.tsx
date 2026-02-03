@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Building2, Mail, Lock, User, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import sinergiLogo from '@/assets/sinergi-logo.png';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -85,16 +86,15 @@ export const Auth: React.FC = () => {
       <div className="hidden lg:flex lg:w-1/2 gradient-primary relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRjMC0yLjIwOS0xLjc5MS00LTQtNHMtNCAxLjc5MS00IDQgMS43OTEgNCA0IDQgNC0xLjc5MSA0LTR6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-30"></div>
         <div className="relative z-10 flex flex-col justify-center px-12 lg:px-20">
-          <div className="flex items-center gap-4 mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-primary-foreground/10 backdrop-blur-sm flex items-center justify-center">
-              <Building2 className="w-8 h-8 text-primary-foreground" />
-            </div>
+          <div className="mb-8">
+            <img 
+              src={sinergiLogo} 
+              alt="SINERGI ERP System" 
+              className="h-20 w-auto brightness-0 invert"
+            />
           </div>
-          <h1 className="text-4xl lg:text-5xl font-heading font-bold text-primary-foreground mb-4">
-            IarPhi
-          </h1>
           <p className="text-xl text-primary-foreground/80 max-w-md">
-            Kelola operasional bisnis Anda secara efisien dengan solusi ERP yang komprehensif.
+            Kelola operasional bisnis Anda secara efisien dengan solusi ERP yang komprehensif dan terintegrasi.
           </p>
           
           <div className="mt-12 space-y-4">
@@ -104,7 +104,7 @@ export const Auth: React.FC = () => {
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
               </div>
-              <span>Manajemen Keuangan Lengkap</span>
+              <span>Point of Sale (POS) dengan Silent Printing</span>
             </div>
             <div className="flex items-center gap-3 text-primary-foreground/90">
               <div className="w-8 h-8 rounded-lg bg-primary-foreground/10 flex items-center justify-center">
@@ -112,7 +112,15 @@ export const Auth: React.FC = () => {
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
               </div>
-              <span>Tracking Inventaris & Produk</span>
+              <span>Multi-Gudang & Manajemen Inventaris</span>
+            </div>
+            <div className="flex items-center gap-3 text-primary-foreground/90">
+              <div className="w-8 h-8 rounded-lg bg-primary-foreground/10 flex items-center justify-center">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <span>Akuntansi & Jurnal Otomatis</span>
             </div>
             <div className="flex items-center gap-3 text-primary-foreground/90">
               <div className="w-8 h-8 rounded-lg bg-primary-foreground/10 flex items-center justify-center">
@@ -128,7 +136,15 @@ export const Auth: React.FC = () => {
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
               </div>
-              <span>Laporan Komprehensif</span>
+              <span>Laporan Keuangan Komprehensif</span>
+            </div>
+            <div className="flex items-center gap-3 text-primary-foreground/90">
+              <div className="w-8 h-8 rounded-lg bg-primary-foreground/10 flex items-center justify-center">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <span>Multi-Company & Multi-User</span>
             </div>
           </div>
         </div>
@@ -138,11 +154,12 @@ export const Auth: React.FC = () => {
       <div className="flex-1 flex items-center justify-center px-6 py-12 lg:px-8 bg-background">
         <div className="w-full max-w-md animate-fade-in">
           {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-            <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
-              <Building2 className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="font-heading font-bold text-xl">IarPhi</span>
+          <div className="lg:hidden flex items-center justify-center mb-8">
+            <img 
+              src={sinergiLogo} 
+              alt="SINERGI ERP System" 
+              className="h-12 w-auto"
+            />
           </div>
 
           <div className="text-center mb-8">
