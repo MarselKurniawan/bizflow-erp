@@ -28,6 +28,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
+import sinergiLogo from '@/assets/sinergi-logo.png';
 
 interface MenuItem {
   icon: React.ElementType;
@@ -165,12 +166,14 @@ export const Sidebar: React.FC = () => {
       {/* Logo */}
       <div className="p-6 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
-            <span className="text-xl font-bold text-primary-foreground">Φ</span>
-          </div>
+          <img 
+            src={sinergiLogo} 
+            alt="SINERGI ERP" 
+            className="h-10 w-auto"
+          />
           <div>
-            <h1 className="font-heading font-bold text-lg text-sidebar-foreground">iArphi</h1>
-            <p className="text-xs text-sidebar-muted">Enterprise Suite</p>
+            <h1 className="font-heading font-bold text-lg text-sidebar-foreground">SINERGI</h1>
+            <p className="text-xs text-sidebar-muted">ERP System</p>
           </div>
         </div>
       </div>

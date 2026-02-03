@@ -5,6 +5,7 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { Building2, Check, Loader2, Plus, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import sinergiLogo from '@/assets/sinergi-logo.png';
 
 export const SelectCompany: React.FC = () => {
   const { user, isLoading: authLoading, signOut, isAdmin } = useAuth();
@@ -45,12 +46,14 @@ export const SelectCompany: React.FC = () => {
       <header className="border-b border-border bg-card">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
-              <Building2 className="w-5 h-5 text-primary-foreground" />
-            </div>
+            <img 
+              src={sinergiLogo} 
+              alt="SINERGI ERP" 
+              className="h-10 w-auto"
+            />
             <div>
-              <h1 className="font-heading font-bold text-lg">IarPhi</h1>
-              <p className="text-xs text-muted-foreground">Select your company</p>
+              <h1 className="font-heading font-bold text-lg">SINERGI</h1>
+              <p className="text-xs text-muted-foreground">ERP - Select your Company</p>
             </div>
           </div>
           <Button variant="ghost" onClick={signOut} className="text-muted-foreground">
