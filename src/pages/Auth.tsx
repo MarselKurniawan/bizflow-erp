@@ -90,7 +90,7 @@ export const Auth: React.FC = () => {
             <img 
               src={sinergiLogo} 
               alt="SINERGI ERP System" 
-              className="h-20 w-auto brightness-0 invert"
+              className="h-32 w-auto brightness-0 invert"
             />
           </div>
           <p className="text-xl text-primary-foreground/80 max-w-md">
