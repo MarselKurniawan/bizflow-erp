@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, AlertCircle, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
@@ -101,6 +101,7 @@ export const ManualJournalEntryForm: React.FC<ManualJournalEntryFormProps> = ({
   const totalCredit = lines.reduce((sum, l) => sum + (parseFloat(l.credit_amount) || 0), 0);
   const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
   const difference = Math.abs(totalDebit - totalCredit);
+  const hasValidLines = lines.filter(l => l.account_id && (parseFloat(l.debit_amount) > 0 || parseFloat(l.credit_amount) > 0)).length >= 2;
 
   const resetForm = () => {
     setEntryDate(new Date().toISOString().split('T')[0]);
@@ -201,6 +202,30 @@ export const ManualJournalEntryForm: React.FC<ManualJournalEntryFormProps> = ({
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Balance Warning Alert */}
+          {totalDebit > 0 && !isBalanced && (
+            <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Journal Entry Tidak Balance</AlertTitle>
+              <AlertDescription>
+                Total Debit ({formatCurrency(totalDebit)}) dan Credit ({formatCurrency(totalCredit)}) harus sama. 
+                Selisih: <strong>{formatCurrency(difference)}</strong>. 
+                Pastikan journal entry balance sebelum menyimpan.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Missing Accounts Alert */}
+          {totalDebit > 0 && !hasValidLines && (
+            <Alert variant="destructive" className="border-warning/50 bg-warning/10">
+              <AlertCircle className="h-4 w-4 text-warning" />
+              <AlertTitle className="text-warning">Akun Belum Lengkap</AlertTitle>
+              <AlertDescription>
+                Minimal 2 baris dengan akun dan nominal yang valid diperlukan untuk membuat journal entry.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Header */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -337,7 +362,8 @@ export const ManualJournalEntryForm: React.FC<ManualJournalEntryFormProps> = ({
             </Button>
             <Button 
               onClick={handleSubmit} 
-              disabled={isSubmitting || !isBalanced || totalDebit === 0}
+              disabled={isSubmitting || !isBalanced || totalDebit === 0 || !hasValidLines}
+              title={!isBalanced ? 'Journal entry harus balance' : !hasValidLines ? 'Minimal 2 baris dengan akun valid' : ''}
             >
               {isSubmitting ? 'Saving...' : 'Create Journal Entry'}
             </Button>
