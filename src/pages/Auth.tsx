@@ -13,7 +13,7 @@ const loginSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
-export const Auth: React.FC = () => {
+const AuthComponent: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -239,5 +239,10 @@ export const Auth: React.FC = () => {
     </div>
   );
 };
+
+export const Auth = React.forwardRef<HTMLDivElement, object>((_, ref) => {
+  return <AuthComponent />;
+});
+Auth.displayName = 'Auth';
 
 export default Auth;

@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Loader2 } from 'lucide-react';
 
-export const MainLayout: React.FC = () => {
+const MainLayoutComponent: React.FC = () => {
   const { user, isLoading: authLoading } = useAuth();
   const { selectedCompany, isLoading: companyLoading, companies } = useCompany();
 
@@ -57,3 +57,8 @@ export const MainLayout: React.FC = () => {
     </div>
   );
 };
+
+export const MainLayout = React.forwardRef<HTMLDivElement, object>((_, ref) => {
+  return <MainLayoutComponent />;
+});
+MainLayout.displayName = 'MainLayout';
