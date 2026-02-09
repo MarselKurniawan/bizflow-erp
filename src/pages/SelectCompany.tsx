@@ -117,18 +117,28 @@ const SelectCompany = forwardRef<HTMLDivElement>((_, ref) => {
                   
                   <div className="flex items-start gap-4">
                     <div className={cn(
-                      'w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold',
+                      'w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold flex-shrink-0',
                       selectedCompany?.id === company.id
                         ? 'gradient-primary text-primary-foreground'
                         : 'bg-muted text-muted-foreground'
                     )}>
-                      {company.code.substring(0, 2).toUpperCase()}
+                      {company.business_type === 'trading' && <Store className="w-6 h-6" />}
+                      {company.business_type === 'service' && <Briefcase className="w-6 h-6" />}
+                      {company.business_type === 'manufacturing' && <Factory className="w-6 h-6" />}
+                      {!company.business_type && company.code.substring(0, 2).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-foreground truncate">
                         {company.name}
                       </h3>
-                      <p className="text-sm text-muted-foreground">{company.code}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-sm text-muted-foreground">{company.code}</span>
+                        {company.business_type && (
+                          <Badge variant="secondary" className="text-[10px] py-0 h-4">
+                            {businessTypeLabels[company.business_type as BusinessType]?.label || company.business_type}
+                          </Badge>
+                        )}
+                      </div>
                       {company.address && (
                         <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
                           {company.address}
