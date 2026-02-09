@@ -18,7 +18,7 @@ export type BusinessType = 'trading' | 'service' | 'manufacturing';
 export interface COATemplate {
   code: string;
   name: string;
-  account_type: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense' | 'cash_bank';
+  account_type: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense' | 'cash_bank' | 'other_income' | 'other_expenses';
   parent_code?: string;
   is_header?: boolean;
   description?: string;
