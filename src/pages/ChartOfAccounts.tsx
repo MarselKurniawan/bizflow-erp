@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Edit2, Trash2, ChevronRight, FolderOpen, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Search, Filter, Edit2, Trash2, ChevronRight, FolderOpen, Info, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Button } from '@/components/ui/button';
@@ -18,63 +18,83 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 const recommendedAccounts = [
   {
-    category: 'Cash & Bank',
+    category: 'Cash & Bank (1-1xxx)',
     type: 'cash_bank',
     accounts: [
-      { code: '1101', name: 'Kas', description: 'Untuk mencatat uang tunai' },
-      { code: '1102', name: 'Bank BCA', description: 'Rekening bank utama' },
-      { code: '1103', name: 'Bank Mandiri', description: 'Rekening bank tambahan' },
+      { code: '1-1001', name: 'Kas', description: 'Uang tunai' },
+      { code: '1-1100', name: 'Bank BCA', description: 'Rekening bank' },
     ],
   },
   {
-    category: 'Asset (Aset)',
+    category: 'Asset/Aset (1-2xxx - 1-3xxx)',
     type: 'asset',
     accounts: [
-      { code: '1201', name: 'Piutang Usaha', description: 'Tagihan dari pelanggan' },
-      { code: '1301', name: 'Persediaan Barang', description: 'Stok barang dagangan' },
-      { code: '1401', name: 'Peralatan', description: 'Aset tetap perusahaan' },
+      { code: '1-2100', name: 'Piutang Usaha', description: 'Accounts Receivable' },
+      { code: '1-2600', name: 'Persediaan', description: 'Inventory' },
+      { code: '1-3100', name: 'Tanah', description: 'Fixed Asset' },
     ],
   },
   {
-    category: 'Liability (Kewajiban)',
+    category: 'Liability/Kewajiban (2-xxxx)',
     type: 'liability',
     accounts: [
-      { code: '2101', name: 'Hutang Usaha', description: 'Hutang ke supplier' },
-      { code: '2102', name: 'Hutang Pajak', description: 'Kewajiban pajak' },
-      { code: '2201', name: 'Hutang Bank', description: 'Pinjaman dari bank' },
+      { code: '2-1100', name: 'Hutang Usaha', description: 'Accounts Payable' },
+      { code: '2-1600', name: 'PPN Keluaran', description: 'VAT Out' },
     ],
   },
   {
-    category: 'Equity (Modal)',
+    category: 'Equity/Modal (3-xxxx)',
     type: 'equity',
     accounts: [
-      { code: '3101', name: 'Modal Disetor', description: 'Modal awal pemilik' },
-      { code: '3201', name: 'Laba Ditahan', description: 'Akumulasi laba' },
+      { code: '3-1100', name: 'Modal Disetor', description: 'Paid-in Capital' },
+      { code: '3-2100', name: 'Laba Ditahan', description: 'Retained Earnings' },
     ],
   },
   {
-    category: 'Revenue (Pendapatan)',
+    category: 'Revenue/Pendapatan (4-xxxx)',
     type: 'revenue',
     accounts: [
-      { code: '4101', name: 'Penjualan', description: 'Pendapatan dari penjualan' },
-      { code: '4102', name: 'Diskon Penjualan', description: 'Potongan penjualan' },
-      { code: '4201', name: 'Pendapatan Lain-lain', description: 'Pendapatan non-operasional' },
+      { code: '4-1100', name: 'Penjualan', description: 'Sales Revenue' },
+      { code: '4-1200', name: 'Diskon Penjualan', description: 'Sales Discount' },
     ],
   },
   {
-    category: 'Expense (Beban)',
+    category: 'COGS/HPP (5-xxxx)',
     type: 'expense',
     accounts: [
-      { code: '5101', name: 'Harga Pokok Penjualan', description: 'HPP/COGS' },
-      { code: '5201', name: 'Beban Gaji', description: 'Gaji karyawan' },
-      { code: '5202', name: 'Beban Sewa', description: 'Sewa kantor/gudang' },
-      { code: '5203', name: 'Beban Listrik & Air', description: 'Utilitas bulanan' },
-      { code: '5204', name: 'Beban Transportasi', description: 'Biaya pengiriman' },
+      { code: '5-1100', name: 'Pembelian', description: 'Purchases / Direct Cost' },
+      { code: '5-1200', name: 'Diskon Pembelian', description: 'Purchase Discount' },
+    ],
+  },
+  {
+    category: 'Operating Expense/Beban (6-xxxx)',
+    type: 'expense',
+    accounts: [
+      { code: '6-1100', name: 'Beban Gaji', description: 'Salary Expense' },
+      { code: '6-1200', name: 'Beban Sewa', description: 'Rent Expense' },
+    ],
+  },
+  {
+    category: 'Other Income/Pendapatan Lain (7-xxxx)',
+    type: 'revenue',
+    accounts: [
+      { code: '7-1100', name: 'Pendapatan Bunga', description: 'Interest Income' },
+      { code: '7-1200', name: 'Pendapatan Sewa', description: 'Rental Income' },
+    ],
+  },
+  {
+    category: 'Other Expense/Beban Lain (8-xxxx)',
+    type: 'expense',
+    accounts: [
+      { code: '8-1100', name: 'Beban Bunga', description: 'Interest Expense' },
+      { code: '8-1500', name: 'Beban Pajak', description: 'Tax Expense' },
     ],
   },
 ];
@@ -110,12 +130,28 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
+// Check if account code indicates a header (ends with 000)
+const isHeaderAccount = (code: string): boolean => {
+  return code.endsWith('000') || code.endsWith('-1000') || code.endsWith('-2000') || code.endsWith('-3000');
+};
+
+// Get the prefix to determine parent-child relationship
+const getAccountPrefix = (code: string): string => {
+  // e.g., "1-1001" -> "1-1", "6-1100" -> "6-1"
+  const parts = code.split('-');
+  if (parts.length >= 2) {
+    return `${parts[0]}-${parts[1].substring(0, 1)}`;
+  }
+  return code.substring(0, 2);
+};
+
 export const ChartOfAccounts: React.FC = () => {
   const { selectedCompany } = useCompany();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
+  const [showInactive, setShowInactive] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [showGuide, setShowGuide] = useState(false);
@@ -125,6 +161,7 @@ export const ChartOfAccounts: React.FC = () => {
     code: '',
     name: '',
     account_type: 'asset',
+    is_active: true,
   });
 
   const fetchAccounts = async () => {
@@ -163,6 +200,7 @@ export const ChartOfAccounts: React.FC = () => {
           code: formData.code,
           name: formData.name,
           account_type: accountType,
+          is_active: formData.is_active,
         })
         .eq('id', editingAccount.id);
 
@@ -180,6 +218,7 @@ export const ChartOfAccounts: React.FC = () => {
           code: formData.code,
           name: formData.name,
           account_type: accountType,
+          is_active: formData.is_active,
         }]);
 
       if (error) {
@@ -196,7 +235,7 @@ export const ChartOfAccounts: React.FC = () => {
 
     setIsDialogOpen(false);
     setEditingAccount(null);
-    setFormData({ code: '', name: '', account_type: 'asset' });
+    setFormData({ code: '', name: '', account_type: 'asset', is_active: true });
   };
 
   const handleEdit = (account: Account) => {
@@ -205,6 +244,7 @@ export const ChartOfAccounts: React.FC = () => {
       code: account.code,
       name: account.name,
       account_type: account.account_type,
+      is_active: account.is_active,
     });
     setIsDialogOpen(true);
   };
@@ -218,9 +258,27 @@ export const ChartOfAccounts: React.FC = () => {
       .eq('id', id);
 
     if (error) {
-      toast.error('Failed to delete account');
+      if (error.code === '23503') {
+        toast.error('Cannot delete: account is used in transactions');
+      } else {
+        toast.error('Failed to delete account');
+      }
     } else {
       toast.success('Account deleted successfully');
+      fetchAccounts();
+    }
+  };
+
+  const toggleAccountStatus = async (account: Account) => {
+    const { error } = await supabase
+      .from('chart_of_accounts')
+      .update({ is_active: !account.is_active })
+      .eq('id', account.id);
+
+    if (error) {
+      toast.error('Failed to update account status');
+    } else {
+      toast.success(`Account ${account.is_active ? 'deactivated' : 'activated'}`);
       fetchAccounts();
     }
   };
@@ -230,14 +288,30 @@ export const ChartOfAccounts: React.FC = () => {
       account.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
       account.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = filterType === 'all' || account.account_type === filterType;
-    return matchesSearch && matchesType;
+    const matchesActive = showInactive || account.is_active;
+    return matchesSearch && matchesType && matchesActive;
   });
 
-  // Group accounts by type
-  const groupedAccounts = accountTypes.reduce((acc, type) => {
-    acc[type.value] = filteredAccounts.filter(a => a.account_type === type.value);
+  // Group accounts by major category (first digit)
+  const groupedByCategory = filteredAccounts.reduce((acc, account) => {
+    const firstDigit = account.code.charAt(0);
+    if (!acc[firstDigit]) {
+      acc[firstDigit] = [];
+    }
+    acc[firstDigit].push(account);
     return acc;
   }, {} as Record<string, Account[]>);
+
+  const categoryLabels: Record<string, { label: string; type: string; color: string }> = {
+    '1': { label: 'Aset (Assets)', type: 'asset', color: 'bg-blue-500' },
+    '2': { label: 'Kewajiban (Liabilities)', type: 'liability', color: 'bg-red-500' },
+    '3': { label: 'Modal (Equity)', type: 'equity', color: 'bg-purple-500' },
+    '4': { label: 'Pendapatan (Revenue)', type: 'revenue', color: 'bg-green-500' },
+    '5': { label: 'Harga Pokok (COGS)', type: 'expense', color: 'bg-orange-500' },
+    '6': { label: 'Beban Operasional (Operating Expenses)', type: 'expense', color: 'bg-amber-500' },
+    '7': { label: 'Pendapatan Lain-lain (Other Income)', type: 'revenue', color: 'bg-emerald-500' },
+    '8': { label: 'Beban Lain-lain (Other Expenses)', type: 'expense', color: 'bg-rose-500' },
+  };
 
   return (
     <div className="space-y-6">
@@ -250,7 +324,7 @@ export const ChartOfAccounts: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Info className="w-5 h-5 text-primary" />
                   <CardTitle className="text-base font-medium text-primary">
-                    Panduan Akun yang Diperlukan
+                    Panduan Chart of Accounts (Penomoran 1-8)
                   </CardTitle>
                 </div>
                 {showGuide ? (
@@ -264,27 +338,18 @@ export const ChartOfAccounts: React.FC = () => {
           <CollapsibleContent>
             <CardContent className="pt-0 pb-4">
               <p className="text-sm text-muted-foreground mb-4">
-                Berikut adalah daftar akun yang direkomendasikan untuk sistem akuntansi lengkap:
+                Sistem penomoran akun berdasarkan standar akuntansi internasional:
               </p>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                 {recommendedAccounts.map((category) => (
-                  <div key={category.category} className="space-y-2">
-                    <h4 className="font-semibold text-sm text-foreground flex items-center gap-2">
-                      <span className={cn('w-2 h-2 rounded-full', 
-                        category.type === 'cash_bank' ? 'bg-primary' :
-                        category.type === 'asset' ? 'bg-blue-500' :
-                        category.type === 'liability' ? 'bg-destructive' :
-                        category.type === 'equity' ? 'bg-purple-500' :
-                        category.type === 'revenue' ? 'bg-green-500' :
-                        'bg-orange-500'
-                      )} />
+                  <div key={category.category} className="space-y-1.5 bg-background/50 rounded-lg p-3">
+                    <h4 className="font-semibold text-sm text-foreground">
                       {category.category}
                     </h4>
-                    <ul className="space-y-1">
+                    <ul className="space-y-0.5">
                       {category.accounts.map((acc) => (
-                        <li key={acc.code} className="text-xs text-muted-foreground pl-4">
+                        <li key={acc.code} className="text-xs text-muted-foreground">
                           <span className="font-mono text-foreground/70">{acc.code}</span> - {acc.name}
-                          <span className="block text-muted-foreground/70 text-[10px]">{acc.description}</span>
                         </li>
                       ))}
                     </ul>
@@ -311,7 +376,7 @@ export const ChartOfAccounts: React.FC = () => {
               className="gradient-primary text-primary-foreground shadow-glow"
               onClick={() => {
                 setEditingAccount(null);
-                setFormData({ code: '', name: '', account_type: 'asset' });
+                setFormData({ code: '', name: '', account_type: 'asset', is_active: true });
               }}
             >
               <Plus className="w-4 h-4 mr-2" />
@@ -334,6 +399,9 @@ export const ChartOfAccounts: React.FC = () => {
                   className="input-field"
                   required
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Format: X-XXXX (contoh: 1-1001 untuk Kas, 6-1100 untuk Beban Gaji)
+                </p>
               </div>
               <div>
                 <label className="form-label">Account Name</label>
@@ -352,6 +420,13 @@ export const ChartOfAccounts: React.FC = () => {
                   value={formData.account_type}
                   onChange={(value) => setFormData({ ...formData, account_type: value })}
                   placeholder="Select account type"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="form-label mb-0">Active Status</label>
+                <Switch
+                  checked={formData.is_active}
+                  onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
                 />
               </div>
               <div className="flex gap-3 pt-4">
@@ -394,9 +469,18 @@ export const ChartOfAccounts: React.FC = () => {
             placeholder="Filter by type"
           />
         </div>
+        <Button
+          variant={showInactive ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setShowInactive(!showInactive)}
+          className="whitespace-nowrap"
+        >
+          {showInactive ? <Eye className="w-4 h-4 mr-2" /> : <EyeOff className="w-4 h-4 mr-2" />}
+          {showInactive ? 'Showing All' : 'Show Inactive'}
+        </Button>
       </div>
 
-      {/* Accounts List */}
+      {/* Accounts List - Grouped by Category (1-8) */}
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground">Loading accounts...</div>
       ) : filteredAccounts.length === 0 ? (
@@ -414,61 +498,117 @@ export const ChartOfAccounts: React.FC = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-6">
-          {accountTypes.map((type) => {
-            const typeAccounts = groupedAccounts[type.value];
-            if (!typeAccounts || typeAccounts.length === 0) return null;
+        <div className="space-y-4">
+          {Object.keys(groupedByCategory).sort().map((category) => {
+            const categoryAccounts = groupedByCategory[category];
+            const categoryInfo = categoryLabels[category] || { label: `Category ${category}`, type: 'asset', color: 'bg-gray-500' };
 
             return (
-              <Card key={type.value} className="animate-fade-in">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <span className={cn('badge-status', type.color)}>{type.label}</span>
-                    <span className="text-muted-foreground font-normal text-sm">
-                      ({typeAccounts.length} accounts)
-                    </span>
+              <Card key={category} className="animate-fade-in overflow-hidden">
+                <CardHeader className="pb-2 bg-muted/30">
+                  <CardTitle className="flex items-center gap-3 text-base">
+                    <span className={cn('w-3 h-3 rounded-full', categoryInfo.color)} />
+                    <span>{category}. {categoryInfo.label}</span>
+                    <Badge variant="secondary" className="font-normal">
+                      {categoryAccounts.length} akun
+                    </Badge>
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-0">
                   <div className="overflow-x-auto">
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Code</th>
-                          <th>Account Name</th>
-                          <th className="text-right">Balance</th>
-                          <th className="text-right">Actions</th>
+                    <table className="w-full">
+                      <thead className="bg-muted/50">
+                        <tr className="text-xs">
+                          <th className="px-4 py-2 text-left font-medium">Code</th>
+                          <th className="px-4 py-2 text-left font-medium">Account Name</th>
+                          <th className="px-4 py-2 text-center font-medium">Status</th>
+                          <th className="px-4 py-2 text-right font-medium">Balance</th>
+                          <th className="px-4 py-2 text-right font-medium">Actions</th>
                         </tr>
                       </thead>
-                      <tbody>
-                        {typeAccounts.map((account) => (
-                          <tr key={account.id}>
-                            <td className="font-mono text-sm">{account.code}</td>
-                            <td className="font-medium">{account.name}</td>
-                            <td className="text-right font-medium">
-                              {formatCurrency(account.balance || 0)}
-                            </td>
-                            <td className="text-right">
-                              <div className="flex justify-end gap-2">
+                      <tbody className="divide-y divide-border">
+                        {categoryAccounts.map((account) => {
+                          const isHeader = isHeaderAccount(account.code);
+                          
+                          return (
+                            <tr 
+                              key={account.id}
+                              className={cn(
+                                'text-sm transition-colors hover:bg-muted/30',
+                                !account.is_active && 'opacity-50 bg-muted/20',
+                                isHeader && 'bg-muted/40 font-semibold'
+                              )}
+                            >
+                              <td className="px-4 py-2.5">
+                                <span className={cn(
+                                  'font-mono',
+                                  isHeader ? 'text-primary font-bold' : 'text-muted-foreground'
+                                )}>
+                                  {account.code}
+                                </span>
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <div className="flex items-center gap-2">
+                                  {!isHeader && (
+                                    <ChevronRight className="w-3 h-3 text-muted-foreground" />
+                                  )}
+                                  <span className={cn(
+                                    isHeader && 'text-foreground font-semibold'
+                                  )}>
+                                    {account.name}
+                                  </span>
+                                  {isHeader && (
+                                    <Badge variant="outline" className="text-[10px] py-0 h-4">
+                                      Header
+                                    </Badge>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-4 py-2.5 text-center">
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => handleEdit(account)}
+                                  onClick={() => toggleAccountStatus(account)}
+                                  className={cn(
+                                    'h-7 px-2',
+                                    account.is_active 
+                                      ? 'text-green-600 hover:text-green-700' 
+                                      : 'text-muted-foreground hover:text-foreground'
+                                  )}
                                 >
-                                  <Edit2 className="w-4 h-4" />
+                                  {account.is_active ? (
+                                    <ToggleRight className="w-5 h-5" />
+                                  ) : (
+                                    <ToggleLeft className="w-5 h-5" />
+                                  )}
                                 </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDelete(account.id)}
-                                  className="text-destructive hover:text-destructive"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                              </td>
+                              <td className="px-4 py-2.5 text-right font-medium tabular-nums">
+                                {formatCurrency(account.balance || 0)}
+                              </td>
+                              <td className="px-4 py-2.5 text-right">
+                                <div className="flex justify-end gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleEdit(account)}
+                                    className="h-7 w-7 p-0"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDelete(account.id)}
+                                    className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

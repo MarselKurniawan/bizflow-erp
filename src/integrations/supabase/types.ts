@@ -198,6 +198,7 @@ export type Database = {
       companies: {
         Row: {
           address: string | null
+          business_type: string | null
           code: string
           created_at: string
           email: string | null
@@ -208,6 +209,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          business_type?: string | null
           code: string
           created_at?: string
           email?: string | null
@@ -218,6 +220,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          business_type?: string | null
           code?: string
           created_at?: string
           email?: string | null

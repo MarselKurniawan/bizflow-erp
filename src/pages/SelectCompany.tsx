@@ -1,13 +1,15 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, forwardRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
-import { Building2, Check, Loader2, Plus, LogOut } from 'lucide-react';
+import { Building2, Check, Loader2, Plus, LogOut, Store, Briefcase, Factory } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import sinergiLogo from '@/assets/sinergi-logo.png';
+import { businessTypeLabels, type BusinessType } from '@/lib/defaultCOA';
 
-export const SelectCompany: React.FC = () => {
+const SelectCompany = forwardRef<HTMLDivElement>((_, ref) => {
   const { user, isLoading: authLoading, signOut, isAdmin } = useAuth();
   const { companies, selectedCompany, setSelectedCompany, isLoading: companyLoading } = useCompany();
   const navigate = useNavigate();
@@ -115,18 +117,28 @@ export const SelectCompany: React.FC = () => {
                   
                   <div className="flex items-start gap-4">
                     <div className={cn(
-                      'w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold',
+                      'w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold flex-shrink-0',
                       selectedCompany?.id === company.id
                         ? 'gradient-primary text-primary-foreground'
                         : 'bg-muted text-muted-foreground'
                     )}>
-                      {company.code.substring(0, 2).toUpperCase()}
+                      {company.business_type === 'trading' && <Store className="w-6 h-6" />}
+                      {company.business_type === 'service' && <Briefcase className="w-6 h-6" />}
+                      {company.business_type === 'manufacturing' && <Factory className="w-6 h-6" />}
+                      {!company.business_type && company.code.substring(0, 2).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-foreground truncate">
                         {company.name}
                       </h3>
-                      <p className="text-sm text-muted-foreground">{company.code}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-sm text-muted-foreground">{company.code}</span>
+                        {company.business_type && (
+                          <Badge variant="secondary" className="text-[10px] py-0 h-4">
+                            {businessTypeLabels[company.business_type as BusinessType]?.label || company.business_type}
+                          </Badge>
+                        )}
+                      </div>
                       {company.address && (
                         <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
                           {company.address}
@@ -154,6 +166,8 @@ export const SelectCompany: React.FC = () => {
       </main>
     </div>
   );
-};
+});
+
+SelectCompany.displayName = 'SelectCompany';
 
 export default SelectCompany;
