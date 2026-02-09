@@ -18,7 +18,7 @@ export type BusinessType = 'trading' | 'service' | 'manufacturing';
 export interface COATemplate {
   code: string;
   name: string;
-  account_type: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense' | 'cash_bank';
+  account_type: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense' | 'cash_bank' | 'other_income' | 'other_expenses';
   parent_code?: string;
   is_header?: boolean;
   description?: string;
@@ -85,21 +85,21 @@ const commonAccounts: COATemplate[] = [
   { code: '3-3000', name: 'Prive / Dividen', account_type: 'equity', description: 'Owner withdrawals / Dividends' },
 
   // ===== 7. OTHER INCOME (PENDAPATAN LAIN-LAIN) =====
-  { code: '7-1000', name: 'Pendapatan Lain-lain', account_type: 'revenue', is_header: true },
-  { code: '7-1100', name: 'Pendapatan Bunga', account_type: 'revenue', parent_code: '7-1000', description: 'Interest income' },
-  { code: '7-1200', name: 'Pendapatan Sewa', account_type: 'revenue', parent_code: '7-1000', description: 'Rental income' },
-  { code: '7-1300', name: 'Keuntungan Selisih Kurs', account_type: 'revenue', parent_code: '7-1000', description: 'Foreign exchange gain' },
-  { code: '7-1400', name: 'Keuntungan Penjualan Aset', account_type: 'revenue', parent_code: '7-1000', description: 'Gain on sale of assets' },
-  { code: '7-1900', name: 'Pendapatan Lain-lain - Lainnya', account_type: 'revenue', parent_code: '7-1000' },
+  { code: '7-1000', name: 'Pendapatan Lain-lain', account_type: 'other_income', is_header: true },
+  { code: '7-1100', name: 'Pendapatan Bunga', account_type: 'other_income', parent_code: '7-1000', description: 'Interest income' },
+  { code: '7-1200', name: 'Pendapatan Sewa', account_type: 'other_income', parent_code: '7-1000', description: 'Rental income' },
+  { code: '7-1300', name: 'Keuntungan Selisih Kurs', account_type: 'other_income', parent_code: '7-1000', description: 'Foreign exchange gain' },
+  { code: '7-1400', name: 'Keuntungan Penjualan Aset', account_type: 'other_income', parent_code: '7-1000', description: 'Gain on sale of assets' },
+  { code: '7-1900', name: 'Pendapatan Lain-lain - Lainnya', account_type: 'other_income', parent_code: '7-1000' },
 
   // ===== 8. OTHER EXPENSES (BEBAN LAIN-LAIN) =====
-  { code: '8-1000', name: 'Beban Lain-lain', account_type: 'expense', is_header: true },
-  { code: '8-1100', name: 'Beban Bunga', account_type: 'expense', parent_code: '8-1000', description: 'Interest expense' },
-  { code: '8-1200', name: 'Beban Administrasi Bank', account_type: 'expense', parent_code: '8-1000', description: 'Bank charges' },
-  { code: '8-1300', name: 'Kerugian Selisih Kurs', account_type: 'expense', parent_code: '8-1000', description: 'Foreign exchange loss' },
-  { code: '8-1400', name: 'Kerugian Penjualan Aset', account_type: 'expense', parent_code: '8-1000', description: 'Loss on sale of assets' },
-  { code: '8-1500', name: 'Beban Pajak Penghasilan', account_type: 'expense', parent_code: '8-1000', description: 'Income tax expense' },
-  { code: '8-1900', name: 'Beban Lain-lain - Lainnya', account_type: 'expense', parent_code: '8-1000' },
+  { code: '8-1000', name: 'Beban Lain-lain', account_type: 'other_expenses', is_header: true },
+  { code: '8-1100', name: 'Beban Bunga', account_type: 'other_expenses', parent_code: '8-1000', description: 'Interest expense' },
+  { code: '8-1200', name: 'Beban Administrasi Bank', account_type: 'other_expenses', parent_code: '8-1000', description: 'Bank charges' },
+  { code: '8-1300', name: 'Kerugian Selisih Kurs', account_type: 'other_expenses', parent_code: '8-1000', description: 'Foreign exchange loss' },
+  { code: '8-1400', name: 'Kerugian Penjualan Aset', account_type: 'other_expenses', parent_code: '8-1000', description: 'Loss on sale of assets' },
+  { code: '8-1500', name: 'Beban Pajak Penghasilan', account_type: 'other_expenses', parent_code: '8-1000', description: 'Income tax expense' },
+  { code: '8-1900', name: 'Beban Lain-lain - Lainnya', account_type: 'other_expenses', parent_code: '8-1000' },
 ];
 
 // Common operating expenses for all industries

@@ -83,7 +83,7 @@ const recommendedAccounts = [
   },
   {
     category: 'Other Income/Pendapatan Lain (7-xxxx)',
-    type: 'revenue',
+    type: 'other_income',
     accounts: [
       { code: '7-1100', name: 'Pendapatan Bunga', description: 'Interest Income' },
       { code: '7-1200', name: 'Pendapatan Sewa', description: 'Rental Income' },
@@ -91,7 +91,7 @@ const recommendedAccounts = [
   },
   {
     category: 'Other Expense/Beban Lain (8-xxxx)',
-    type: 'expense',
+    type: 'other_expenses',
     accounts: [
       { code: '8-1100', name: 'Beban Bunga', description: 'Interest Expense' },
       { code: '8-1500', name: 'Beban Pajak', description: 'Tax Expense' },
@@ -116,6 +116,8 @@ const accountTypes = [
   { value: 'revenue', label: 'Revenue', color: 'bg-success/10 text-success' },
   { value: 'expense', label: 'Expense', color: 'bg-warning/10 text-warning' },
   { value: 'cash_bank', label: 'Cash & Bank', color: 'bg-primary/10 text-primary' },
+  { value: 'other_income', label: 'Other Income', color: 'bg-emerald-500/10 text-emerald-600' },
+  { value: 'other_expenses', label: 'Other Expenses', color: 'bg-rose-500/10 text-rose-600' },
 ];
 
 const getAccountTypeStyle = (type: string) => {
@@ -191,7 +193,7 @@ export const ChartOfAccounts: React.FC = () => {
     e.preventDefault();
     if (!selectedCompany) return;
 
-    const accountType = formData.account_type as "asset" | "liability" | "equity" | "revenue" | "expense" | "cash_bank";
+    const accountType = formData.account_type as "asset" | "liability" | "equity" | "revenue" | "expense" | "cash_bank" | "other_income" | "other_expenses";
     
     if (editingAccount) {
       const { error } = await supabase
@@ -309,8 +311,8 @@ export const ChartOfAccounts: React.FC = () => {
     '4': { label: 'Pendapatan (Revenue)', type: 'revenue', color: 'bg-green-500' },
     '5': { label: 'Harga Pokok (COGS)', type: 'expense', color: 'bg-orange-500' },
     '6': { label: 'Beban Operasional (Operating Expenses)', type: 'expense', color: 'bg-amber-500' },
-    '7': { label: 'Pendapatan Lain-lain (Other Income)', type: 'revenue', color: 'bg-emerald-500' },
-    '8': { label: 'Beban Lain-lain (Other Expenses)', type: 'expense', color: 'bg-rose-500' },
+    '7': { label: 'Pendapatan Lain-lain (Other Income)', type: 'other_income', color: 'bg-emerald-500' },
+    '8': { label: 'Beban Lain-lain (Other Expenses)', type: 'other_expenses', color: 'bg-rose-500' },
   };
 
   return (
