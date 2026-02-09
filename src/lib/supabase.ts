@@ -59,7 +59,7 @@ export const getUserCompanies = async (userId: string): Promise<Company[]> => {
       console.error('Error fetching companies:', error);
       return [];
     }
-    return data || [];
+    return (data || []) as Company[];
   }
 
   // Regular user can only see assigned companies
