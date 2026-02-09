@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Building2, Shield } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Shield, Factory, Store, Briefcase } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Dialog,
   DialogContent,
@@ -22,6 +23,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { PasswordConfirmDialog } from '@/components/PasswordConfirmDialog';
+import { getDefaultCOA, businessTypeLabels, type BusinessType } from '@/lib/defaultCOA';
+import { Badge } from '@/components/ui/badge';
 
 interface Company {
   id: string;
@@ -30,6 +33,7 @@ interface Company {
   address: string | null;
   phone: string | null;
   email: string | null;
+  business_type: BusinessType | null;
   created_at: string;
 }
 
@@ -39,6 +43,7 @@ const initialFormData = {
   address: '',
   phone: '',
   email: '',
+  business_type: 'trading' as BusinessType,
 };
 
 const Companies: React.FC = () => {
