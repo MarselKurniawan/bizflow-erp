@@ -116,6 +116,8 @@ const accountTypes = [
   { value: 'revenue', label: 'Revenue', color: 'bg-success/10 text-success' },
   { value: 'expense', label: 'Expense', color: 'bg-warning/10 text-warning' },
   { value: 'cash_bank', label: 'Cash & Bank', color: 'bg-primary/10 text-primary' },
+  { value: 'other_income', label: 'Other Income', color: 'bg-emerald-500/10 text-emerald-600' },
+  { value: 'other_expenses', label: 'Other Expenses', color: 'bg-rose-500/10 text-rose-600' },
 ];
 
 const getAccountTypeStyle = (type: string) => {
