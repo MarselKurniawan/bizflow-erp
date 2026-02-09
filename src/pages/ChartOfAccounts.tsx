@@ -311,8 +311,8 @@ export const ChartOfAccounts: React.FC = () => {
     '4': { label: 'Pendapatan (Revenue)', type: 'revenue', color: 'bg-green-500' },
     '5': { label: 'Harga Pokok (COGS)', type: 'expense', color: 'bg-orange-500' },
     '6': { label: 'Beban Operasional (Operating Expenses)', type: 'expense', color: 'bg-amber-500' },
-    '7': { label: 'Pendapatan Lain-lain (Other Income)', type: 'revenue', color: 'bg-emerald-500' },
-    '8': { label: 'Beban Lain-lain (Other Expenses)', type: 'expense', color: 'bg-rose-500' },
+    '7': { label: 'Pendapatan Lain-lain (Other Income)', type: 'other_income', color: 'bg-emerald-500' },
+    '8': { label: 'Beban Lain-lain (Other Expenses)', type: 'other_expenses', color: 'bg-rose-500' },
   };
 
   return (
