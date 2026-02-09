@@ -83,7 +83,7 @@ const recommendedAccounts = [
   },
   {
     category: 'Other Income/Pendapatan Lain (7-xxxx)',
-    type: 'revenue',
+    type: 'other_income',
     accounts: [
       { code: '7-1100', name: 'Pendapatan Bunga', description: 'Interest Income' },
       { code: '7-1200', name: 'Pendapatan Sewa', description: 'Rental Income' },
@@ -91,7 +91,7 @@ const recommendedAccounts = [
   },
   {
     category: 'Other Expense/Beban Lain (8-xxxx)',
-    type: 'expense',
+    type: 'other_expenses',
     accounts: [
       { code: '8-1100', name: 'Beban Bunga', description: 'Interest Expense' },
       { code: '8-1500', name: 'Beban Pajak', description: 'Tax Expense' },
