@@ -2876,6 +2876,8 @@ export type Database = {
         | "revenue"
         | "expense"
         | "cash_bank"
+        | "other_income"
+        | "other_expenses"
       app_role: "admin" | "user" | "cashier"
       asset_status: "active" | "disposed" | "fully_depreciated"
       depreciation_method: "straight_line" | "declining_balance"
@@ -3036,6 +3038,8 @@ export const Constants = {
         "revenue",
         "expense",
         "cash_bank",
+        "other_income",
+        "other_expenses",
       ],
       app_role: ["admin", "user", "cashier"],
       asset_status: ["active", "disposed", "fully_depreciated"],
