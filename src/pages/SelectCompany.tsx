@@ -156,6 +156,8 @@ const SelectCompany = forwardRef<HTMLDivElement>((_, ref) => {
       </main>
     </div>
   );
-};
+});
+
+SelectCompany.displayName = 'SelectCompany';
 
 export default SelectCompany;
