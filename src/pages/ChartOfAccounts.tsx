@@ -193,7 +193,7 @@ export const ChartOfAccounts: React.FC = () => {
     e.preventDefault();
     if (!selectedCompany) return;
 
-    const accountType = formData.account_type as "asset" | "liability" | "equity" | "revenue" | "expense" | "cash_bank";
+    const accountType = formData.account_type as "asset" | "liability" | "equity" | "revenue" | "expense" | "cash_bank" | "other_income" | "other_expenses";
     
     if (editingAccount) {
       const { error } = await supabase
