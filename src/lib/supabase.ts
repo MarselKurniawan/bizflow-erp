@@ -12,6 +12,8 @@ export interface UserProfile {
   avatar_url: string | null;
 }
 
+export type BusinessType = 'trading' | 'service' | 'manufacturing';
+
 export interface Company {
   id: string;
   name: string;
@@ -19,6 +21,7 @@ export interface Company {
   address: string | null;
   phone: string | null;
   email: string | null;
+  business_type: BusinessType | null;
 }
 
 export interface UserRole {

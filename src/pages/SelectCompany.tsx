@@ -1,13 +1,15 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, forwardRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
-import { Building2, Check, Loader2, Plus, LogOut } from 'lucide-react';
+import { Building2, Check, Loader2, Plus, LogOut, Store, Briefcase, Factory } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import sinergiLogo from '@/assets/sinergi-logo.png';
+import { businessTypeLabels, type BusinessType } from '@/lib/defaultCOA';
 
-export const SelectCompany: React.FC = () => {
+const SelectCompany = forwardRef<HTMLDivElement>((_, ref) => {
   const { user, isLoading: authLoading, signOut, isAdmin } = useAuth();
   const { companies, selectedCompany, setSelectedCompany, isLoading: companyLoading } = useCompany();
   const navigate = useNavigate();
