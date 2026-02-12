@@ -641,8 +641,8 @@ const POSCashClosing = () => {
                       )}
                     </span>
                   </div>
-                  <div className="flex justify-between font-bold">
-                    <span>= Ekspektasi Kas Tunai</span>
+                  <div className="flex justify-between font-bold border-t pt-2">
+                    <span>= Kas Seharusnya</span>
                     <span>
                       {formatCurrency(
                         (currentSession?.opening_balance || 0) + 
@@ -779,29 +779,36 @@ const POSCashClosing = () => {
                 </div>
               </div>
 
-              {/* Cash Balance */}
-              <div className="border-t pt-4 space-y-2">
-                <div className="flex justify-between">
-                  <span>Saldo Awal</span>
-                  <span>{formatCurrency(selectedSession.opening_balance)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Ekspektasi Kas</span>
-                  <span>{formatCurrency(selectedSession.expected_balance || 0)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Saldo Akhir</span>
-                  <span>{formatCurrency(selectedSession.closing_balance || 0)}</span>
-                </div>
-                <div className="flex justify-between font-bold">
-                  <span>Selisih</span>
+              {/* Rekonsiliasi Kas */}
+              <div className="border rounded-lg p-4">
+                <h3 className="font-semibold mb-3">Rekonsiliasi Kas</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Saldo Awal Kas</span>
+                    <span>{formatCurrency(selectedSession.opening_balance)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>+ Penerimaan Tunai</span>
+                    <span>{formatCurrency((selectedSession.expected_balance || 0) - selectedSession.opening_balance)}</span>
+                  </div>
+                  <div className="flex justify-between font-medium border-t pt-2">
+                    <span>Kas Seharusnya</span>
+                    <span>{formatCurrency(selectedSession.expected_balance || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Kas Aktual (Hitung Fisik)</span>
+                    <span>{formatCurrency(selectedSession.closing_balance || 0)}</span>
+                  </div>
+                  <div className="flex justify-between font-bold border-t pt-2">
+                    <span>Selisih</span>
                   <span className={
                     selectedSession.difference === 0 ? 'text-primary' : 
                     (selectedSession.difference || 0) > 0 ? 'text-primary' : 'text-destructive'
                   }>
                     {(selectedSession.difference || 0) > 0 ? '+' : ''}
                     {formatCurrency(selectedSession.difference || 0)}
-                  </span>
+                    </span>
+                  </div>
                 </div>
               </div>
 

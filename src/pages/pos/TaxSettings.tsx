@@ -383,7 +383,7 @@ const TaxSettings = () => {
 
       {/* Add/Edit Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingTax ? 'Edit' : 'Tambah'} Tax/Service</DialogTitle>
           </DialogHeader>
@@ -407,7 +407,7 @@ const TaxSettings = () => {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Nama *</Label>
                 <Input
@@ -463,14 +463,26 @@ const TaxSettings = () => {
                   </SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">
-                • Tambah ke Subtotal: Tax dihitung dari subtotal<br />
-                • Tambah ke Total: Tax dihitung setelah tax lain diterapkan<br />
-                • Termasuk Harga: Tax sudah termasuk dalam harga jual
-              </p>
+              <div className="text-xs text-muted-foreground space-y-2 bg-muted/50 rounded-lg p-3 mt-2">
+                <div>
+                  <p className="font-medium text-foreground">• Tambah ke Subtotal</p>
+                  <p>Tax dihitung langsung dari subtotal (harga item).</p>
+                  <p className="italic">Contoh: Subtotal Rp 100.000, PPN 11% → Tax = Rp 11.000 → Total = Rp 111.000</p>
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">• Tambah ke Total</p>
+                  <p>Tax dihitung setelah tax/service lain diterapkan (bertumpuk).</p>
+                  <p className="italic">Contoh: Subtotal Rp 100.000 + PPN Rp 11.000 = Rp 111.000, lalu Service 5% → Rp 5.550 → Total = Rp 116.550</p>
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">• Termasuk dalam Harga</p>
+                  <p>Tax sudah termasuk di harga jual, tidak menambah total.</p>
+                  <p className="italic">Contoh: Harga Rp 111.000 sudah termasuk PPN 11% → Harga asli = Rp 100.000, PPN = Rp 11.000</p>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Urutan Penerapan</Label>
                 <Input
@@ -505,7 +517,7 @@ const TaxSettings = () => {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-6 pt-2 border-t">
+            <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4 sm:gap-6 pt-2 border-t">
               <div className="flex items-center gap-2">
                 <Switch
                   checked={formData.show_on_receipt}
