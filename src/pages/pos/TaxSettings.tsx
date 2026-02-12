@@ -463,21 +463,50 @@ const TaxSettings = () => {
                   </SelectItem>
                 </SelectContent>
               </Select>
-              <div className="text-xs text-muted-foreground space-y-2 bg-muted/50 rounded-lg p-3 mt-2">
+              <div className="text-xs text-muted-foreground space-y-3 bg-muted/50 rounded-lg p-3 mt-2">
+                {formData.category === 'service' && (
+                  <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-md p-2 mb-1">
+                    <p className="font-medium text-blue-700 dark:text-blue-400">ℹ️ Aturan Service Charge</p>
+                    <p className="text-blue-600 dark:text-blue-300 mt-1">
+                      Service charge biasanya dihitung dari <strong>subtotal (harga makanan/minuman)</strong>, 
+                      bukan dari total setelah pajak. Gunakan <strong>"Tambah ke Subtotal"</strong>.
+                    </p>
+                  </div>
+                )}
+                {formData.category === 'tax' && (
+                  <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md p-2 mb-1">
+                    <p className="font-medium text-amber-700 dark:text-amber-400">ℹ️ Aturan Pajak (PPN)</p>
+                    <p className="text-amber-600 dark:text-amber-300 mt-1">
+                      PPN dihitung dari <strong>Dasar Pengenaan Pajak (DPP)</strong> = Subtotal + Service Charge. 
+                      Jika ada service charge, gunakan <strong>"Tambah ke Total"</strong> agar PPN dihitung setelah service.
+                    </p>
+                  </div>
+                )}
                 <div>
                   <p className="font-medium text-foreground">• Tambah ke Subtotal</p>
-                  <p>Tax dihitung langsung dari subtotal (harga item).</p>
-                  <p className="italic">Contoh: Subtotal Rp 100.000, PPN 11% → Tax = Rp 11.000 → Total = Rp 111.000</p>
+                  <p>Dihitung langsung dari subtotal (harga item saja).</p>
+                  <p className="italic">Contoh: Subtotal Rp 100.000 × 5% Service = Rp 5.000 → Total Rp 105.000</p>
                 </div>
                 <div>
                   <p className="font-medium text-foreground">• Tambah ke Total</p>
-                  <p>Tax dihitung setelah tax/service lain diterapkan (bertumpuk).</p>
-                  <p className="italic">Contoh: Subtotal Rp 100.000 + PPN Rp 11.000 = Rp 111.000, lalu Service 5% → Rp 5.550 → Total = Rp 116.550</p>
+                  <p>Dihitung setelah tarif lain diterapkan (bertumpuk/cascading).</p>
+                  <p className="italic">Contoh: Subtotal Rp 100.000 + Service Rp 5.000 = Rp 105.000, lalu PPN 11% = Rp 11.550 → Total Rp 116.550</p>
                 </div>
                 <div>
                   <p className="font-medium text-foreground">• Termasuk dalam Harga</p>
-                  <p>Tax sudah termasuk di harga jual, tidak menambah total.</p>
-                  <p className="italic">Contoh: Harga Rp 111.000 sudah termasuk PPN 11% → Harga asli = Rp 100.000, PPN = Rp 11.000</p>
+                  <p>Sudah termasuk di harga jual, tidak menambah total. Hanya ditampilkan sebagai info.</p>
+                  <p className="italic">Contoh: Harga Rp 111.000 sudah termasuk PPN 11% → Harga asli Rp 100.000, PPN Rp 11.000</p>
+                </div>
+
+                <div className="border-t pt-2 mt-2">
+                  <p className="font-semibold text-foreground">📋 Contoh Kasus Restoran:</p>
+                  <div className="mt-1 space-y-0.5">
+                    <p>Subtotal makanan: <strong>Rp 100.000</strong></p>
+                    <p>+ Service 5% (dari subtotal): <strong>Rp 5.000</strong></p>
+                    <p>+ PPN 11% (dari 100.000 + 5.000): <strong>Rp 11.550</strong></p>
+                    <p className="font-semibold text-foreground">= Total: Rp 116.550</p>
+                  </div>
+                  <p className="mt-1 italic">→ Service pakai "Tambah ke Subtotal", PPN pakai "Tambah ke Total"</p>
                 </div>
               </div>
             </div>
