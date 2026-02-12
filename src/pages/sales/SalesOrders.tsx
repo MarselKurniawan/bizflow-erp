@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProducts } from '@/hooks/useProducts';
+import { generateDocumentNumber } from '@/lib/documentNumber';
+import { logActivity } from '@/lib/activityLog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -117,13 +119,9 @@ export const SalesOrders: React.FC = () => {
     fetchCustomers();
   }, [selectedCompany]);
 
-  const generateOrderNumber = () => {
-    const date = new Date();
-    const prefix = 'SO';
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const random = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
-    return `${prefix}-${year}${month}-${random}`;
+  const generateOrderNumber = async () => {
+    if (!selectedCompany) return 'SO-000000-0000';
+    return await generateDocumentNumber(selectedCompany.id, 'SO');
   };
 
   const calculateItemTotal = (item: OrderItem) => {
@@ -195,7 +193,7 @@ export const SalesOrders: React.FC = () => {
     }
 
     const totals = calculateTotals();
-    const orderNumber = generateOrderNumber();
+    const orderNumber = await generateOrderNumber();
 
     const { data: order, error: orderError } = await supabase
       .from('sales_orders')
@@ -235,6 +233,15 @@ export const SalesOrders: React.FC = () => {
     if (itemsError) {
       toast.error('Failed to save order items');
     } else {
+      await logActivity({
+        companyId: selectedCompany.id,
+        userId: user.id,
+        action: 'create',
+        entityType: 'sales_order',
+        entityId: order.id,
+        entityNumber: orderNumber,
+        description: `Sales Order ${orderNumber} dibuat untuk ${customers.find(c => c.id === formData.customer_id)?.name || 'Customer'}`,
+      });
       toast.success('Sales order created successfully');
       fetchOrders();
       resetForm();
@@ -297,9 +304,8 @@ export const SalesOrders: React.FC = () => {
     const invoiceTotal = order.total_amount - dpPaid;
     const invoiceSubtotal = order.subtotal - (dpPaid / (1 + (order.tax_amount / order.subtotal)));
 
-    // Generate invoice number
-    const date = new Date();
-    const invoiceNumber = `INV-${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
+    // Generate invoice number using auto-numbering
+    const invoiceNumber = await generateDocumentNumber(selectedCompany.id, 'INV');
 
     // Calculate due date (30 days from now)
     const dueDate = new Date();
@@ -335,7 +341,7 @@ export const SalesOrders: React.FC = () => {
     await supabase.from('sales_orders').update({ status: 'invoiced' }).eq('id', order.id);
 
     // Create journal entry for accounts receivable
-    const entryNumber = `JE-${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
+    const entryNumber = await generateDocumentNumber(selectedCompany.id, 'JE');
     
     const { data: journalEntry, error: journalError } = await supabase
       .from('journal_entries')

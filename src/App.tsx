@@ -47,6 +47,7 @@ import Companies from "./pages/settings/Companies";
 import Profile from "./pages/settings/Profile";
 import PeriodClosing from "./pages/accounting/PeriodClosing";
 import TransactionTags from "./pages/accounting/TransactionTags";
+import ActivityLog from "./pages/accounting/ActivityLog";
 import POSDashboard from "./pages/pos/POSDashboard";
 import POSTransactions from "./pages/pos/POSTransactions";
 import POSSettings from "./pages/pos/POSSettings";
@@ -59,6 +60,7 @@ import Deposits from "./pages/pos/Deposits";
 import Promotions from "./pages/pos/Promotions";
 import PrinterSettings from "./pages/pos/PrinterSettings";
 import FixedAssets from "./pages/assets/FixedAssets";
+import TaxReport from "./pages/reports/TaxReport";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -121,6 +123,7 @@ const App = () => (
                 {/* Accounting */}
                 <Route path="/accounting/period-closing" element={<PeriodClosing />} />
                 <Route path="/accounting/tags" element={<TransactionTags />} />
+                <Route path="/accounting/activity-log" element={<ActivityLog />} />
                 <Route path="/reports/profit-loss" element={<ProfitLoss />} />
                 <Route path="/reports/balance-sheet" element={<BalanceSheet />} />
                 <Route path="/reports/general-ledger" element={<GeneralLedger />} />
@@ -131,6 +134,7 @@ const App = () => (
                 <Route path="/reports/sales" element={<SalesReport />} />
                 <Route path="/reports/purchases" element={<PurchaseReport />} />
                 <Route path="/reports/inventory" element={<InventoryReport />} />
+                <Route path="/reports/tax" element={<TaxReport />} />
                 {/* Settings */}
                 <Route path="/settings/users" element={<Users />} />
                 <Route path="/settings/companies" element={<Companies />} />

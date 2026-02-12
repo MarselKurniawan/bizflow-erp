@@ -54,6 +54,18 @@ interface Transaction {
   date: string;
 }
 
+interface TopProduct {
+  name: string;
+  quantity: number;
+  revenue: number;
+}
+
+interface AgingBucket {
+  label: string;
+  amount: number;
+  count: number;
+}
+
 const formatCompactCurrency = (value: number) => {
   if (value >= 1000000000) {
     return `Rp ${(value / 1000000000).toFixed(1)}B`;
@@ -107,6 +119,8 @@ export const Dashboard: React.FC = () => {
   });
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [arAging, setArAging] = useState<AgingBucket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -263,6 +277,66 @@ export const Dashboard: React.FC = () => {
       }));
 
       setRecentTransactions(transactions);
+
+      // Fetch top products from POS transactions (current month)
+      const firstOfMonth = new Date();
+      firstOfMonth.setDate(1);
+      const { data: posTransactions } = await supabase
+        .from('pos_transactions')
+        .select('id')
+        .eq('company_id', selectedCompany.id)
+        .eq('status', 'completed')
+        .gte('transaction_date', firstOfMonth.toISOString().split('T')[0]);
+
+      if (posTransactions && posTransactions.length > 0) {
+        const txIds = posTransactions.map(t => t.id);
+        const { data: posItems } = await supabase
+          .from('pos_transaction_items')
+          .select('quantity, total, product:products!pos_transaction_items_product_id_fkey(name)')
+          .in('pos_transaction_id', txIds);
+
+        const productMap = new Map<string, TopProduct>();
+        (posItems || []).forEach((item: any) => {
+          const name = item.product?.name || 'Unknown';
+          const existing = productMap.get(name) || { name, quantity: 0, revenue: 0 };
+          existing.quantity += item.quantity || 0;
+          existing.revenue += item.total || 0;
+          productMap.set(name, existing);
+        });
+        setTopProducts(
+          Array.from(productMap.values())
+            .sort((a, b) => b.revenue - a.revenue)
+            .slice(0, 5)
+        );
+      }
+
+      // Calculate AR Aging buckets
+      const today = new Date();
+      const agingBuckets: AgingBucket[] = [
+        { label: 'Belum Jatuh Tempo', amount: 0, count: 0 },
+        { label: '1-30 Hari', amount: 0, count: 0 },
+        { label: '31-60 Hari', amount: 0, count: 0 },
+        { label: '61-90 Hari', amount: 0, count: 0 },
+        { label: '> 90 Hari', amount: 0, count: 0 },
+      ];
+
+      (invoices || []).forEach((inv: any) => {
+        if (!inv.outstanding_amount || inv.outstanding_amount <= 0) return;
+        const dueDate = new Date(inv.due_date || inv.invoice_date);
+        const daysPast = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        let bucket: number;
+        if (daysPast <= 0) bucket = 0;
+        else if (daysPast <= 30) bucket = 1;
+        else if (daysPast <= 60) bucket = 2;
+        else if (daysPast <= 90) bucket = 3;
+        else bucket = 4;
+
+        agingBuckets[bucket].amount += inv.outstanding_amount;
+        agingBuckets[bucket].count += 1;
+      });
+
+      setArAging(agingBuckets);
 
       // Set stats
       setStats({
@@ -483,6 +557,75 @@ export const Dashboard: React.FC = () => {
                 </span>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Top Products & AR Aging Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top Products */}
+        <Card className="animate-fade-in" style={{ animationDelay: '175ms' }}>
+          <CardHeader>
+            <CardTitle className="text-lg font-heading">Top Produk (Bulan Ini)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {topProducts.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">Belum ada data POS bulan ini</p>
+            ) : (
+              <div className="space-y-3">
+                {topProducts.map((product, index) => (
+                  <div key={product.name} className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
+                      {index + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{product.name}</p>
+                      <p className="text-xs text-muted-foreground">{product.quantity} terjual</p>
+                    </div>
+                    <span className="font-medium text-sm">{formatCompactCurrency(product.revenue)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* AR Aging */}
+        <Card className="animate-fade-in" style={{ animationDelay: '175ms' }}>
+          <CardHeader>
+            <CardTitle className="text-lg font-heading">Aging Piutang (AR)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {arAging.every(b => b.amount === 0) ? (
+              <p className="text-center text-muted-foreground py-8">Tidak ada piutang outstanding</p>
+            ) : (
+              <div className="space-y-3">
+                {arAging.map((bucket, index) => {
+                  const maxAmount = Math.max(...arAging.map(b => b.amount), 1);
+                  const percentage = (bucket.amount / maxAmount) * 100;
+                  const colors = ['bg-success', 'bg-blue-500', 'bg-warning', 'bg-orange-500', 'bg-destructive'];
+                  return (
+                    <div key={bucket.label}>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-muted-foreground">{bucket.label}</span>
+                        <span className="font-medium">
+                          {formatCompactCurrency(bucket.amount)}
+                          {bucket.count > 0 && (
+                            <span className="text-xs text-muted-foreground ml-1">({bucket.count})</span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full ${colors[index]} transition-all`}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

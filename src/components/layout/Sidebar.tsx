@@ -113,6 +113,7 @@ const menuItems: MenuItem[] = [
     children: [
       { label: 'Tutup Buku', path: '/accounting/period-closing' },
       { label: 'Tag Transaksi', path: '/accounting/tags' },
+      { label: 'Audit Trail', path: '/accounting/activity-log' },
     ]
   },
   {
@@ -125,6 +126,7 @@ const menuItems: MenuItem[] = [
       { label: 'General Ledger', path: '/reports/general-ledger' },
       { label: 'Aged Receivables', path: '/reports/aged-receivables' },
       { label: 'Aged Payables', path: '/reports/aged-payables' },
+      { label: 'Rekap Pajak (PPN)', path: '/reports/tax' },
     ]
   },
   { 
