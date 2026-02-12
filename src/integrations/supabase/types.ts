@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action: string
+          changes: Json | null
+          company_id: string
+          created_at: string
+          description: string | null
+          entity_id: string | null
+          entity_number: string | null
+          entity_type: string
+          id: string
+          ip_address: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          changes?: Json | null
+          company_id: string
+          created_at?: string
+          description?: string | null
+          entity_id?: string | null
+          entity_number?: string | null
+          entity_type: string
+          id?: string
+          ip_address?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          changes?: Json | null
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          entity_id?: string | null
+          entity_number?: string | null
+          entity_type?: string
+          id?: string
+          ip_address?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       asset_depreciations: {
         Row: {
           accumulated_total: number
@@ -284,6 +334,50 @@ export type Database = {
             columns: ["receivable_account_id"]
             isOneToOne: false
             referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_sequences: {
+        Row: {
+          company_id: string
+          created_at: string
+          current_number: number
+          document_type: string
+          id: string
+          last_reset_date: string
+          prefix: string
+          reset_period: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          current_number?: number
+          document_type: string
+          id?: string
+          last_reset_date?: string
+          prefix: string
+          reset_period?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          current_number?: number
+          document_type?: string
+          id?: string
+          last_reset_date?: string
+          prefix?: string
+          reset_period?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_sequences_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -2856,6 +2950,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_document_number: {
+        Args: { p_company_id: string; p_document_type: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
